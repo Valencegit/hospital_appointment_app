@@ -1,0 +1,100 @@
+﻿{
+    "TargetReliability":  90,
+    "AchievedReliability":  100,
+    "MeetsRequirement":  true,
+    "TotalIterations":  10,
+    "SuccessfulIterations":  10,
+    "TotalExecutionDurationSeconds":  366.37,
+    "Runs":  [
+                 {
+                     "Iteration":  1,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  48.31,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:17:43"
+                 },
+                 {
+                     "Iteration":  2,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  38.96,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:18:31"
+                 },
+                 {
+                     "Iteration":  3,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  40.05,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:19:10"
+                 },
+                 {
+                     "Iteration":  4,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  30.71,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:19:50"
+                 },
+                 {
+                     "Iteration":  5,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  29.2,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:20:21"
+                 },
+                 {
+                     "Iteration":  6,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  28.49,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:20:50"
+                 },
+                 {
+                     "Iteration":  7,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  53.64,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:21:19"
+                 },
+                 {
+                     "Iteration":  8,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  41.85,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:22:12"
+                 },
+                 {
+                     "Iteration":  9,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  24.02,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:22:55"
+                 },
+                 {
+                     "Iteration":  10,
+                     "Status":  "PASS",
+                     "PassPercentage":  100,
+                     "TestsPassed":  52,
+                     "DurationSeconds":  30.22,
+                     "ExitCode":  0,
+                     "Timestamp":  "2026-11-10 01:23:19"
+                 }
+             ]
+}
