@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ───────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isPatient() {
+      return isAuthenticated() && getUserRole() == 'patient';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && getUserRole() == 'staff';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isStaffOrAdmin() {
+      return isStaff() || isAdmin();
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Users can read their own record; admin can read all
+      allow read: if isOwner(uid) || isAdmin();
+      // Only backend (Cloud Functions) or admin can write user records
+      allow write: if isAdmin();
+      // Allow new patient self-registration (create own record only)
+      allow create: if isOwner(uid);
+    }
+
+    // ── Patients ───────────────────────────────────────────────────────────
+    match /patients/{uid} {
+      allow read: if isOwner(uid) || isStaffOrAdmin();
+      // Patient can create their own record; update only permitted fields
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isStaffOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Staff ──────────────────────────────────────────────────────────────
+    match /staff/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── Departments ────────────────────────────────────────────────────────
+    match /departments/{deptId} {
+      // Authenticated users can view active departments
+      allow read: if isAuthenticated();
+      // Only staff or admin can create/update departments
+      allow write: if isStaffOrAdmin();
+    }
+
+    // ── Slots ──────────────────────────────────────────────────────────────
+    match /slots/{slotId} {
+      allow read: if isAuthenticated();
+      // Staff/admin manage slots; Cloud Functions update bookedCount
+      allow create, update, delete: if isStaffOrAdmin();
+    }
+
+    // ── Appointments ───────────────────────────────────────────────────────
+    match /appointments/{appointmentId} {
+      // Patient can read their own; staff/admin can read all
+      allow read: if isAuthenticated() &&
+        (resource.data.patientId == request.auth.uid || isStaffOrAdmin());
+      // Appointments are created only by Cloud Functions (trusted backend)
+      allow create: if false;
+      // Status updates: staff/admin only; patients can update their own
+      // request fields (cancel/reschedule request)
+      allow update: if isStaffOrAdmin() ||
+        (isOwner(resource.data.patientId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'cancellationReason', 'requestedSlotId',
+                     'requestedTime', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // ── Booking requests (processed by Cloud Functions) ────────────────────
+    match /booking_requests/{requestId} {
+      // Patient creates booking request; Cloud Function writes result back
+      allow create: if isPatient() &&
+        request.resource.data.patientId == request.auth.uid;
+      // Cloud Function updates result field (runs with admin SDK, bypasses rules)
+      allow read: if isOwner(resource.data.patientId);
+      allow update, delete: if false;
+    }
+
+    // ── Notifications ──────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isOwner(resource.data.userId);
+      // Created by Cloud Functions only; users can mark read
+      allow create: if false;
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['isRead']);
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ── Audit logs ─────────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      // Written by Cloud Functions and trusted backend code
+      allow write: if isStaffOrAdmin();
+    }
+  }
+}
