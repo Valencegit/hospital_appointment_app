@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Hospital Appointment Booking App
 
 A Flutter mobile application for hospital appointment booking and patient management, built as part of a Bachelor of Science in Computer Science project at Metropolitan International University.
@@ -152,3 +153,6 @@ This implementation addresses all functional requirements from the SRS:
 - FR-15 to FR-20: Appointment Booking & Management
 - FR-21 to FR-24: Notifications & Reporting
 - §3.2.7: Administration & Audit
+=======
+# hospital_appointment_app
+>>>>>>> 353bd1fb31ce881e53d0e57cb3435c9ba4a36ba8
