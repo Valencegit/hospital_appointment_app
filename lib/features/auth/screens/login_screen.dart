@@ -10,6 +10,8 @@ import '../../../core/utils/ui_helpers.dart';
 import '../../../core/utils/validators.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/biometric_service.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/glass_input.dart';
 
 /// Login screen matching the MediCare mockup:
 /// • Hospital building hero + blue wave header
@@ -198,20 +200,8 @@ class _LoginScreenState extends State<LoginScreen> {
               offset: const Offset(0, -32),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 460),
+                child: GlassCard(
                   padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _darkNavy.withValues(alpha: 0.10),
-                        blurRadius: 28,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -248,31 +238,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
 
                         // Email Address field
-                        const _FieldLabel(
-                          icon: Icons.email_outlined,
+                        GlassInput(
                           label: 'Email Address',
-                        ),
-                        const SizedBox(height: 6),
-                        _LoginTextField(
+                          hint: 'Enter your email address',
+                          icon: Icons.email_outlined,
                           controller: _emailCtrl,
-                          hintText: 'Enter your email address',
                           keyboardType: TextInputType.emailAddress,
                           validator: Validators.validateEmail,
                         ),
                         const SizedBox(height: 18),
 
-                        // Password field
-                        const _FieldLabel(
-                          icon: Icons.lock_outlined,
+                        GlassInput(
                           label: 'Password',
-                        ),
-                        const SizedBox(height: 6),
-                        _LoginTextField(
+                          hint: 'Enter your password',
+                          icon: Icons.lock_outlined,
                           controller: _passwordCtrl,
-                          hintText: 'Enter your password',
                           obscureText: _obscurePassword,
                           validator: Validators.validatePassword,
-                          onFieldSubmitted: (_) => _handleLogin(),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword

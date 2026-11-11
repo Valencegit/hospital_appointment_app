@@ -10,6 +10,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/glass_input.dart';
 import '../widgets/social_sign_in_button.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -113,19 +115,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
-              child: Container(
+              child: GlassCard(
                 padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _navy.withValues(alpha: 0.1),
-                      blurRadius: 28,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -187,28 +178,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _ErrorBanner(message: auth.errorMessage!),
                         const SizedBox(height: 14),
                       ],
-                      CustomTextField(
-                        controller: _fullNameCtrl,
+                      GlassInput(
                         label: 'Full Name',
-                        hintText: 'Enter your full name',
-                        prefixIcon: Icons.person_outline_rounded,
+                        hint: 'Enter your full name',
+                        icon: Icons.person_outline_rounded,
+                        controller: _fullNameCtrl,
                         validator: Validators.validateName,
                       ),
                       const SizedBox(height: 12),
-                      CustomTextField(
-                        controller: _emailCtrl,
+                      GlassInput(
                         label: 'Email Address',
-                        hintText: 'Enter your email address',
-                        prefixIcon: Icons.email_outlined,
+                        hint: 'Enter your email address',
+                        icon: Icons.email_outlined,
+                        controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         validator: Validators.validateEmail,
                       ),
                       const SizedBox(height: 12),
-                      CustomTextField(
-                        controller: _phoneCtrl,
+                      GlassInput(
                         label: 'Phone Number',
-                        hintText: 'Enter your phone number',
-                        prefixIcon: Icons.phone_outlined,
+                        hint: 'Enter your phone number',
+                        icon: Icons.phone_outlined,
+                        controller: _phoneCtrl,
                         keyboardType: TextInputType.phone,
                         validator: Validators.validatePhone,
                       ),
@@ -243,27 +234,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             : (value) => setState(() => _gender = value),
                       ),
                       const SizedBox(height: 12),
-                      CustomTextField(
-                        controller: _passwordCtrl,
+                      GlassInput(
                         label: 'Password',
-                        hintText: 'Create a password',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        isPassword: true,
+                        hint: 'Create a password',
+                        icon: Icons.lock_outline_rounded,
+                        controller: _passwordCtrl,
+                        obscureText: true,
                         validator: Validators.validatePassword,
                       ),
                       const SizedBox(height: 12),
-                      CustomTextField(
-                        controller: _confirmCtrl,
+                      GlassInput(
                         label: 'Confirm Password',
-                        hintText: 'Re-enter your password',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        isPassword: true,
+                        hint: 'Re-enter your password',
+                        icon: Icons.lock_outline_rounded,
+                        controller: _confirmCtrl,
+                        obscureText: true,
                         validator: (value) =>
                             Validators.validateConfirmPassword(
                           value,
                           _passwordCtrl.text,
                         ),
-                        onFieldSubmitted: (_) => _handleRegister(),
                       ),
                       const SizedBox(height: 18),
                       CustomButton(
