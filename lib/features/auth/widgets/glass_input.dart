@@ -48,7 +48,7 @@ class GlassInput extends StatelessWidget {
             ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.white.withOpacity(0.55),
+            fillColor: Colors.white.withValues(alpha: 0.55),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 17,
@@ -60,7 +60,7 @@ class GlassInput extends StatelessWidget {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
               borderSide: BorderSide(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
               ),
             ),
             focusedBorder: OutlineInputBorder(
