@@ -50,8 +50,8 @@ class _TopWavePainter extends CustomPainter {
     final fgPaint = Paint()
       ..shader = const LinearGradient(
         colors: [
-          Color(0xFF0C6CF2),
-          Color(0xFF0052CC),
+          Color(0xFF008F87),
+          Color(0xFF006D68),
         ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -109,8 +109,8 @@ class _BottomWavePainter extends CustomPainter {
     final paint2 = Paint()
       ..shader = const LinearGradient(
         colors: [
-          Color(0xFF0B63E5),
-          Color(0xFF004EC4),
+          Color(0xFF008F87),
+          Color(0xFF006D68),
         ],
         begin: Alignment.bottomLeft,
         end: Alignment.topRight,
@@ -153,7 +153,7 @@ class MetroHospitalBuildingPainter extends CustomPainter {
     canvas.drawRRect(RRect.fromRectAndRadius(mainRect, const Radius.circular(8)), bldgOutline);
 
     // Upper top trim
-    final roofPaint = Paint()..color = const Color(0xFF0B63E5);
+    final roofPaint = Paint()..color = const Color(0xFF008F87);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.08, h * 0.26, w * 0.84, h * 0.04),
@@ -188,7 +188,7 @@ class MetroHospitalBuildingPainter extends CustomPainter {
     }
 
     // Modern glass entrance / canopy
-    final canopyPaint = Paint()..color = const Color(0xFF004EC4);
+    final canopyPaint = Paint()..color = const Color(0xFF006D68);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.40, h * 0.76, w * 0.20, h * 0.03),

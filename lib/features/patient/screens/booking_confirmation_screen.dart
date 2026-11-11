@@ -223,7 +223,7 @@ class _ConfirmRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFEBF3FE),
+            color: const Color(0xFFDDF7F4),
             borderRadius: BorderRadius.circular(9),
           ),
           child: Icon(icon, size: 18, color: AppColors.primary),

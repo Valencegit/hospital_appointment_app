@@ -897,7 +897,7 @@ class _AppointmentListTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEBF3FE),
+                  color: Color(0xFFDDF7F4),
                   shape: BoxShape.circle,
                 ),
                 child: Center(

@@ -59,7 +59,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 background: Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF0C6CF2), Color(0xFF004EC4)],
+                      colors: [Color(0xFF008F87), Color(0xFF006D68)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -159,7 +159,7 @@ class AdminDashboardScreen extends StatelessWidget {
                             icon: BootstrapIcons.hospital,
                             title: 'Departments',
                             count: '${counts['departments']}',
-                            color: const Color(0xFF0284C7),
+                            color: const Color(0xFF00B4A8),
                           ),
                           _AdminStatCard(
                             icon: BootstrapIcons.calendar_fill,

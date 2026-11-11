@@ -63,7 +63,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 ),
                 child: ClipOval(
                   child: Container(
-                    color: const Color(0xFFEBF3FE),
+                    color: const Color(0xFFDDF7F4),
                     child: Center(
                       child: Text(
                         user?.firstName.isNotEmpty == true
@@ -535,7 +535,7 @@ class _StaffAppointmentCard extends StatelessWidget {
                 height: 44,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFFEBF3FE),
+                  color: Color(0xFFDDF7F4),
                 ),
                 child: Center(
                   child: Text(

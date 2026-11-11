@@ -160,7 +160,7 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                 width: 72,
                 height: 72,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEBF3FE),
+                  color: Color(0xFFDDF7F4),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

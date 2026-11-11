@@ -232,7 +232,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                     width: 34,
                                     height: 34,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEBF3FE),
+                                      color: const Color(0xFFDDF7F4),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(

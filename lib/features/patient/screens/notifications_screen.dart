@@ -62,7 +62,7 @@ class NotificationsScreen extends StatelessWidget {
                 _NotificationItemRow(
                   icon: BootstrapIcons.bell_fill,
                   iconColor: Colors.white,
-                  iconBgColor: const Color(0xFF0B63E5),
+                  iconBgColor: const Color(0xFF008F87),
                   title: 'Appointment Reminder',
                   message:
                       'Your appointment is tomorrow\n(Dec 2, 2025)',
@@ -154,7 +154,7 @@ class NotificationsScreen extends StatelessWidget {
         return (
           BootstrapIcons.bell_fill,
           Colors.white,
-          const Color(0xFF0B63E5)
+          const Color(0xFF008F87)
         );
       case 'updated':
       case 'appointment_updated':
@@ -166,7 +166,7 @@ class NotificationsScreen extends StatelessWidget {
         return (
           BootstrapIcons.bell,
           Colors.white,
-          const Color(0xFF0B63E5)
+          const Color(0xFF008F87)
         );
     }
   }

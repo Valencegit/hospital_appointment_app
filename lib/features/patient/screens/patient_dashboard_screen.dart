@@ -437,8 +437,8 @@ class _PatientHeroHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFF0C6CF2),
-            Color(0xFF0052CC),
+            Color(0xFF008F87),
+            Color(0xFF006D68),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -748,7 +748,7 @@ class _QuickActionCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEBF3FE),
+                  color: const Color(0xFFDDF7F4),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
@@ -866,7 +866,7 @@ class _DeptChip extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFFEBF3FE),
+                color: const Color(0xFFDDF7F4),
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(icon, size: 20, color: AppColors.primary),

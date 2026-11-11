@@ -191,7 +191,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       height: 90,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFFEBF3FE),
+                        color: const Color(0xFFDDF7F4),
                         border: Border.all(color: const Color(0xFFD6E6FF), width: 2.5),
                         boxShadow: const [
                           BoxShadow(

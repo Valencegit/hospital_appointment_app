@@ -83,8 +83,8 @@ class _SplashScreenState extends State<SplashScreen>
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFFE8F1FC),
-              Color(0xFFF6FAFF),
+              Color(0xFFDDF7F4),
+              Color(0xFFECF9F8),
               Colors.white,
             ],
             begin: Alignment.topCenter,
@@ -117,7 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
                             fontFamily: 'Poppins',
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF183B5B),
+                            color: Color(0xFF006D68),
                             letterSpacing: -0.5,
                             height: 1.1,
                           ),
@@ -128,7 +128,7 @@ class _SplashScreenState extends State<SplashScreen>
                             fontFamily: 'Poppins',
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF1266C5),
+                            color: Color(0xFF008F87),
                             letterSpacing: 0.3,
                           ),
                         ),
@@ -181,8 +181,8 @@ class _SplashScreenState extends State<SplashScreen>
                           decoration: const BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Color(0xFF0C6CF2),
-                                Color(0xFF0052CC),
+                                Color(0xFF008F87),
+                                Color(0xFF006D68),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,

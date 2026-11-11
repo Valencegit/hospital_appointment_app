@@ -21,9 +21,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  static const _navy = Color(0xFF183B5B);
-  static const _primary = Color(0xFF1266C5);
-  static const _background = Color(0xFFF1F6FC);
+  static const _darkTeal = Color(0xFF006D68);
+  static const _primary = Color(0xFF008F87);
+  static const _background = Color(0xFFDDF7F4);
 
   final _formKey = GlobalKey<FormState>();
   final _fullNameCtrl = TextEditingController();
@@ -127,7 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           tooltip: 'Back to login',
                           onPressed: () => context.go('/login'),
                           icon: const Icon(Icons.arrow_back_rounded),
-                          color: _navy,
+                          color: _darkTeal,
                         ),
                       ),
                       const AppLogo(size: 56, showShadow: true),
@@ -139,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontFamily: 'Poppins',
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: _navy,
+                          color: _darkTeal,
                         ),
                       ),
                       const Text(
@@ -159,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontFamily: 'Poppins',
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
-                          color: _navy,
+                          color: _darkTeal,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -337,7 +337,7 @@ class _PatientDateField extends StatelessWidget {
           style: TextStyle(
             color: date == null
                 ? const Color(0xFF90A4AE)
-                : _RegisterScreenState._navy,
+                : _RegisterScreenState._darkTeal,
           ),
         ),
       ),
