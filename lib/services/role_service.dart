@@ -89,19 +89,12 @@ class RoleService {
   UserRole? _roleFromClaims(Map<String, dynamic>? claims) {
     final value = claims?['role'];
     if (value is! String) return null;
-    switch (value) {
-      case 'patient':
-        return UserRole.patient;
-      case 'receptionist':
-        return UserRole.receptionist;
-      case 'doctor':
-        return UserRole.doctor;
-      case 'scheduling_officer':
-        return UserRole.schedulingOfficer;
-      case 'admin':
-        return UserRole.admin;
-      default:
-        return null;
+
+    final parsed = UserRole.fromString(value);
+    if (parsed == UserRole.pending &&
+        value.trim().toLowerCase() != 'pending') {
+      return null;
     }
+    return parsed;
   }
 }

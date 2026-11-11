@@ -23,7 +23,9 @@ enum UserRole {
   // ── Parsing ──────────────────────────────────────────────────────────────
 
   static UserRole fromString(String? role) {
-    switch (role?.toLowerCase().trim()) {
+    final normalized = _normalizeRole(role);
+
+    switch (normalized) {
       case 'patient':
         return UserRole.patient;
       case 'receptionist':
@@ -38,9 +40,24 @@ enum UserRole {
       case 'staff':
       case 'healthcare_professional':
         return UserRole.staff;
+      case 'pending':
+        return UserRole.pending;
       default:
         return UserRole.pending;
     }
+  }
+
+  static String _normalizeRole(String? role) {
+    if (role == null) return '';
+
+    var normalized = role.trim();
+    normalized = normalized.replaceAllMapped(
+      RegExp(r'([a-z])([A-Z])'),
+      (match) => '${match.group(1)}_${match.group(2)}',
+    );
+    normalized = normalized.replaceAll(RegExp(r'[\s\-]+'), '_');
+    normalized = normalized.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
+    return normalized.toLowerCase();
   }
 
   // ── Serialisation ─────────────────────────────────────────────────────────

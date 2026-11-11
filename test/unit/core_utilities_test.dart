@@ -44,6 +44,9 @@ void main() {
       expect(UserRole.fromString('doctor'), UserRole.doctor);
       expect(UserRole.fromString('staff'), UserRole.staff);
       expect(UserRole.fromString('healthcare_professional'), UserRole.staff);
+      expect(UserRole.fromString('schedulingOfficer'), UserRole.schedulingOfficer);
+      expect(UserRole.fromString('Scheduling Officer'), UserRole.schedulingOfficer);
+      expect(UserRole.fromString('pending'), UserRole.pending);
       expect(UserRole.fromString('receptionist'), UserRole.receptionist);
       expect(UserRole.fromString('admin'), UserRole.admin);
       expect(UserRole.fromString('administrator'), UserRole.admin);
@@ -53,6 +56,7 @@ void main() {
       expect(UserRole.patient.toValue(), 'patient');
       expect(UserRole.doctor.toValue(), 'doctor');
       expect(UserRole.staff.toValue(), 'staff');
+      expect(UserRole.schedulingOfficer.toValue(), 'scheduling_officer');
       expect(UserRole.receptionist.toValue(), 'receptionist');
       expect(UserRole.admin.toValue(), 'admin');
 
