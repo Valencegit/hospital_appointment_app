@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/enums/user_role.dart';
+
 /// Pill-style badge highlighting a user's role with role-specific colors and icons.
 class RoleBadge extends StatelessWidget {
   final UserRole role;
@@ -34,9 +35,17 @@ class RoleBadge extends StatelessWidget {
         bg = AppColors.roleReceptionistBg;
         fg = AppColors.roleReceptionist;
         break;
+      case UserRole.schedulingOfficer:
+        bg = AppColors.roleStaffBg;
+        fg = AppColors.roleStaff;
+        break;
       case UserRole.admin:
         bg = AppColors.roleAdminBg;
         fg = AppColors.roleAdmin;
+        break;
+      case UserRole.pending:
+        bg = AppColors.surfaceVariant;
+        fg = AppColors.textSecondary;
         break;
     }
 

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../models/appointment_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/appointment_provider.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
@@ -17,8 +18,7 @@ class StaffAppointmentsScreen extends StatefulWidget {
       _StaffAppointmentsScreenState();
 }
 
-class _StaffAppointmentsScreenState
-    extends State<StaffAppointmentsScreen> {
+class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
   String _statusFilter = 'all';
   DateTime? _dateFilter;
   String _searchQuery = '';
@@ -71,17 +71,15 @@ class _StaffAppointmentsScreenState
                 onChanged: (v) =>
                     setState(() => _searchQuery = v.trim().toLowerCase()),
                 decoration: const InputDecoration(
-                  hintText:
-                      'Search by patient name or reference...',
-                  hintStyle: TextStyle(
-                      fontSize: 13, color: AppColors.textMuted),
+                  hintText: 'Search by patient name or reference...',
+                  hintStyle:
+                      TextStyle(fontSize: 13, color: AppColors.textMuted),
                   prefixIcon: Icon(Icons.search_rounded,
                       size: 20, color: AppColors.textSecondary),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
@@ -94,27 +92,22 @@ class _StaffAppointmentsScreenState
               height: 52,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 itemCount: _statuses.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final (value, label) = _statuses[i];
                   final selected = _statusFilter == value;
                   return FilterChip(
-                    label: Text(label,
-                        style: const TextStyle(fontSize: 12)),
+                    label: Text(label, style: const TextStyle(fontSize: 12)),
                     selected: selected,
-                    onSelected: (_) =>
-                        setState(() => _statusFilter = value),
+                    onSelected: (_) => setState(() => _statusFilter = value),
                     selectedColor: AppColors.primary,
                     checkmarkColor: Colors.white,
                     labelStyle: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : AppColors.textPrimary),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4),
+                        color: selected ? Colors.white : AppColors.textPrimary),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   );
                 },
               ),
@@ -125,8 +118,7 @@ class _StaffAppointmentsScreenState
           if (_dateFilter != null)
             Container(
               color: AppColors.infoLight,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   const Icon(BootstrapIcons.calendar_date,
@@ -134,8 +126,7 @@ class _StaffAppointmentsScreenState
                   const SizedBox(width: 8),
                   Text(
                     'Filtered: ${DateFormat('EEE, MMM d').format(_dateFilter!)}',
-                    style: const TextStyle(
-                        color: AppColors.info, fontSize: 13),
+                    style: const TextStyle(color: AppColors.info, fontSize: 13),
                   ),
                   const Spacer(),
                   GestureDetector(
@@ -150,31 +141,43 @@ class _StaffAppointmentsScreenState
           // ── Appointment list ────────────────────────────────────────────────
           Expanded(
             child: StreamBuilder<List<AppointmentModel>>(
-              stream: context
-                  .read<AppointmentProvider>()
-                  .allAppointmentsStream(
-                    status: _statusFilter == 'all'
-                        ? null
-                        : _statusFilter,
-                    date: _dateFilter,
-                  ),
+              stream: context.watch<AuthProvider>().currentRole.isDoctor
+                  ? context
+                      .read<AppointmentProvider>()
+                      .doctorAppointmentsStream(
+                        context.read<AuthProvider>().currentUser!.uid,
+                      )
+                  : context.read<AppointmentProvider>().allAppointmentsStream(
+                        status: _statusFilter == 'all' ? null : _statusFilter,
+                        date: _dateFilter,
+                      ),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
                 var appointments = snap.data ?? [];
+                final isDoctor =
+                    context.read<AuthProvider>().currentRole.isDoctor;
+                if (isDoctor && _statusFilter != 'all') {
+                  appointments = appointments
+                      .where((a) => a.status == _statusFilter)
+                      .toList();
+                }
+                if (isDoctor && _dateFilter != null) {
+                  appointments = appointments
+                      .where((a) =>
+                          a.appointmentDate.year == _dateFilter!.year &&
+                          a.appointmentDate.month == _dateFilter!.month &&
+                          a.appointmentDate.day == _dateFilter!.day)
+                      .toList();
+                }
 
                 // Client-side search filter
                 if (_searchQuery.isNotEmpty) {
                   appointments = appointments
                       .where((a) =>
-                          a.patientName
-                              .toLowerCase()
-                              .contains(_searchQuery) ||
-                          a.id
-                              .toLowerCase()
-                              .contains(_searchQuery))
+                          a.patientName.toLowerCase().contains(_searchQuery) ||
+                          a.id.toLowerCase().contains(_searchQuery))
                       .toList();
                 }
 
@@ -190,19 +193,17 @@ class _StaffAppointmentsScreenState
                           _searchQuery.isNotEmpty
                               ? 'No results for "$_searchQuery"'
                               : 'No appointments found',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary),
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
                   );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.all(
-                      AppConstants.defaultPadding),
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
                   itemCount: appointments.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) =>
                       _StaffApptTile(appointment: appointments[i]),
                 );
@@ -234,13 +235,11 @@ class _StaffApptTile extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius:
-            BorderRadius.circular(AppConstants.defaultBorderRadius),
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
         border: Border.all(color: AppColors.divider),
       ),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 44,
           height: 44,
@@ -258,18 +257,15 @@ class _StaffApptTile extends StatelessWidget {
           children: [
             const SizedBox(height: 2),
             Text(appointment.departmentName,
-                style: const TextStyle(
-                    color: AppColors.primary, fontSize: 12)),
+                style: const TextStyle(color: AppColors.primary, fontSize: 12)),
             Text(
               '${DateFormat('MMM d, yyyy').format(appointment.appointmentDate)}  ·  ${appointment.appointmentTime}',
-              style: const TextStyle(
-                  color: AppColors.textMuted, fontSize: 12),
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
         ),
         trailing: _StatusBadge(status: appointment.status),
-        onTap: () =>
-            context.push('/staff/appointments/${appointment.id}'),
+        onTap: () => context.push('/staff/appointments/${appointment.id}'),
       ),
     );
   }
@@ -310,8 +306,7 @@ class _StatusBadge extends StatelessWidget {
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(
         _label(status),
-        style: TextStyle(
-            color: fg, fontSize: 10, fontWeight: FontWeight.w600),
+        style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w600),
       ),
     );
   }

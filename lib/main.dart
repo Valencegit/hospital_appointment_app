@@ -13,6 +13,7 @@ import 'services/firebase_service.dart';
 import 'services/firestore_service.dart';
 import 'services/appointment_service.dart';
 import 'services/notification_service.dart';
+import 'services/role_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,7 @@ void main() async {
 
   // Initialize singleton services
   final firestoreService = FirestoreService();
+  final roleService = RoleService();
   final authService = AuthService(firestoreService: firestoreService);
   final appointmentService = AppointmentService();
 
@@ -54,6 +56,7 @@ void main() async {
           create: (_) => AuthProvider(
             authService: authService,
             firestoreService: firestoreService,
+            roleService: roleService,
           ),
         ),
         ChangeNotifierProvider<AppointmentProvider>(

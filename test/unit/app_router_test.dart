@@ -50,43 +50,17 @@ void main() {
       expect(auth.isAuthenticated, isFalse);
     });
 
-    test('Patient dashboard routing and protection guards', () {
-      final auth = AuthProvider(
-        authService: mockAuth,
-        firestoreService: mockFirestore,
+    test('each trusted role maps to its own dashboard', () {
+      expect(AppRouter.dashboardForRole(UserRole.patient), '/patient');
+      expect(
+          AppRouter.dashboardForRole(UserRole.receptionist), '/receptionist');
+      expect(AppRouter.dashboardForRole(UserRole.doctor), '/doctor');
+      expect(
+        AppRouter.dashboardForRole(UserRole.schedulingOfficer),
+        '/scheduling',
       );
-      auth.selectDemoRole(UserRole.patient);
-
-      final appRouter = AppRouter(authProvider: auth);
-      final router = appRouter.router;
-
-      expect(router, isA<GoRouter>());
-      expect(auth.isAuthenticated, isTrue);
-      expect(auth.currentRole, UserRole.patient);
-    });
-
-    test('Doctor / Staff role configuration and access levels', () {
-      final auth = AuthProvider(
-        authService: mockAuth,
-        firestoreService: mockFirestore,
-      );
-      auth.selectDemoRole(UserRole.doctor);
-
-      expect(auth.isAuthenticated, isTrue);
-      expect(auth.currentRole.isStaff, isTrue);
-      expect(auth.currentRole.isAdmin, isFalse);
-    });
-
-    test('Admin role configuration and access levels', () {
-      final auth = AuthProvider(
-        authService: mockAuth,
-        firestoreService: mockFirestore,
-      );
-      auth.selectDemoRole(UserRole.admin);
-
-      expect(auth.isAuthenticated, isTrue);
-      expect(auth.currentRole.isAdmin, isTrue);
-      expect(auth.currentRole.isDoctor, isFalse);
+      expect(AppRouter.dashboardForRole(UserRole.admin), '/admin');
+      expect(AppRouter.dashboardForRole(UserRole.pending), '/account-pending');
     });
 
     test('All main routes are configured in GoRouter route tree', () {
@@ -118,6 +92,10 @@ void main() {
       expect(routes, contains('/admin/departments'));
       expect(routes, contains('/admin/reports'));
       expect(routes, contains('/admin/audit'));
+      expect(routes, contains('/receptionist'));
+      expect(routes, contains('/doctor'));
+      expect(routes, contains('/scheduling'));
+      expect(routes, contains('/account-pending'));
     });
   });
 }

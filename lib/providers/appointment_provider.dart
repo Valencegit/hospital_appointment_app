@@ -25,6 +25,9 @@ class AppointmentProvider extends ChangeNotifier {
   Stream<List<AppointmentModel>> patientAppointmentsStream(String patientId) =>
       _service.patientAppointmentsStream(patientId);
 
+  Stream<List<AppointmentModel>> doctorAppointmentsStream(String doctorId) =>
+      _service.doctorAppointmentsStream(doctorId);
+
   Stream<List<AppointmentModel>> departmentAppointmentsStream(
           String departmentId) =>
       _service.allAppointmentsStream(departmentId: departmentId);

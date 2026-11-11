@@ -12,7 +12,8 @@ import 'package:appointmentapp/shared/widgets/role_badge.dart';
 
 void main() {
   group('Clinical Widgets Component Tests', () {
-    testWidgets('AppointmentCard renders appointment info and responds to tap', (tester) async {
+    testWidgets('AppointmentCard renders appointment info and responds to tap',
+        (tester) async {
       final now = DateTime(2026, 11, 10);
       bool tapped = false;
 
@@ -49,7 +50,8 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('AppointmentCard renders various status badges properly', (tester) async {
+    testWidgets('AppointmentCard renders various status badges properly',
+        (tester) async {
       final now = DateTime(2026, 11, 10);
 
       for (final status in [
@@ -100,7 +102,8 @@ void main() {
       expect(find.text('Upcoming Consultations'), findsOneWidget);
     });
 
-    testWidgets('AppLoadingIndicator renders spinner and message', (tester) async {
+    testWidgets('AppLoadingIndicator renders spinner and message',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -133,13 +136,14 @@ void main() {
       );
 
       expect(find.text('Patient'), findsOneWidget);
-      expect(find.text('Doctor / Specialist'), findsOneWidget);
-      expect(find.text('Hospital Staff'), findsOneWidget);
+      expect(find.text('Doctor'), findsOneWidget);
+      expect(find.text('Staff (Legacy)'), findsOneWidget);
       expect(find.text('Receptionist'), findsOneWidget);
       expect(find.text('Administrator'), findsOneWidget);
     });
 
-    testWidgets('CustomTextField handles text input and obscure text', (tester) async {
+    testWidgets('CustomTextField handles text input and obscure text',
+        (tester) async {
       final controller = TextEditingController();
 
       await tester.pumpWidget(
@@ -160,7 +164,8 @@ void main() {
       expect(controller.text, 'superSecret123');
     });
 
-    testWidgets('CustomButton renders secondary/outline variant style', (tester) async {
+    testWidgets('CustomButton renders secondary/outline variant style',
+        (tester) async {
       bool tapped = false;
 
       await tester.pumpWidget(

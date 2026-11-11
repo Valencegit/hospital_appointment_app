@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/appointment_model.dart';
 import '../../../models/department_model.dart';
+import '../../../models/notification_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/appointment_provider.dart';
 import '../../../providers/department_provider.dart';
+import '../../../services/firestore_service.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
 /// Metro Health Patient Dashboard — Screen 5.
@@ -62,10 +64,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               _PatientHeroHeader(
                 displayName: displayName,
                 uid: uid,
-                onNotificationTap: () =>
-                    context.push('/patient/notifications'),
+                onNotificationTap: () => context.push('/patient/notifications'),
               ),
 
+              const SizedBox(height: 20),
+              _PatientAppointmentsOverview(patientId: uid),
               const SizedBox(height: 24),
 
               // ── Quick Actions 2x2 Grid ──────────────────────────────────────
@@ -85,13 +88,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     _QuickActionGrid2x2(
-                      onBook: () => context.push(
-                          '/patient/book',
-                          extra: <String, dynamic>{}),
+                      onBook: () => context
+                          .push('/patient/book', extra: <String, dynamic>{}),
                       onAppointments: () =>
                           context.push('/patient/appointments'),
-                      onDepartments: () =>
-                          context.push('/patient/departments'),
+                      onDepartments: () => context.push('/patient/departments'),
                       onProfile: () => context.push('/patient/profile'),
                     ),
                   ],
@@ -138,7 +139,17 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       .read<DepartmentProvider>()
                       .activeDepartmentsStream(),
                   builder: (ctx, snap) {
-                    final depts = snap.data ?? _fallbackDepts;
+                    if (snap.hasError) {
+                      return const Center(
+                        child: Text('Unable to load departments.'),
+                      );
+                    }
+                    final depts = snap.data ?? const <DepartmentModel>[];
+                    if (depts.isEmpty) {
+                      return const Center(
+                        child: Text('No departments are currently available.'),
+                      );
+                    }
                     return ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -183,8 +194,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () =>
-                              context.push('/patient/notifications'),
+                          onTap: () => context.push('/patient/notifications'),
                           child: const Text(
                             'View All',
                             style: TextStyle(
@@ -198,22 +208,44 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _NotifBannerTile(
-                      icon: BootstrapIcons.check_circle_fill,
-                      iconBg: AppColors.successLight,
-                      iconColor: AppColors.success,
-                      title: 'Appointment Confirmed',
-                      subtitle: 'Your next visit is confirmed.',
-                      onTap: () => context.push('/patient/notifications'),
-                    ),
-                    const SizedBox(height: 8),
-                    _NotifBannerTile(
-                      icon: Icons.notifications_active_rounded,
-                      iconBg: AppColors.primaryLight,
-                      iconColor: AppColors.primary,
-                      title: 'Reminder',
-                      subtitle: 'You have an appointment tomorrow.',
-                      onTap: () => context.push('/patient/notifications'),
+                    StreamBuilder<List<NotificationModel>>(
+                      stream: context
+                          .read<FirestoreService>()
+                          .notificationsStream(uid),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const Text('Unable to load notifications.');
+                        }
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const LinearProgressIndicator();
+                        }
+                        final notifications = snapshot.data ?? const [];
+                        if (notifications.isEmpty) {
+                          return const Text(
+                            'You’re all caught up. No notifications yet.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          );
+                        }
+                        return Column(
+                          children: notifications.take(2).map((notification) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _NotifBannerTile(
+                                icon: notification.isRead
+                                    ? Icons.notifications_none
+                                    : Icons.notifications_active_rounded,
+                                iconBg: AppColors.primaryLight,
+                                iconColor: AppColors.primary,
+                                title: notification.title,
+                                subtitle: notification.body,
+                                onTap: () =>
+                                    context.push('/patient/notifications'),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -231,32 +263,160 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  static List<DepartmentModel> get _fallbackDepts => [
-    DepartmentModel(id: 'd1', name: 'Cardiology', description: 'Heart & vascular care', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd2', name: 'General Medicine', description: 'Primary care', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd3', name: 'Paediatrics', description: "Children's health", createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd4', name: 'Orthopaedics', description: 'Bones & joints', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd5', name: 'Dermatology', description: 'Skin care', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd6', name: 'Dental', description: 'Oral health', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd7', name: 'Ophthalmology', description: 'Eye care', createdAt: DateTime(2024)),
-    DepartmentModel(id: 'd8', name: 'Obstetrics & Gynae', description: "Women's health", createdAt: DateTime(2024)),
-  ];
-
   static IconData _deptIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('cardio')) return BootstrapIcons.heart;
-    if (lower.contains('paedia') || lower.contains('pedi')) return BootstrapIcons.emoji_smile;
-    if (lower.contains('ortho')) return BootstrapIcons.universal_access;
-    if (lower.contains('derma')) return BootstrapIcons.person_bounding_box;
-    if (lower.contains('ophthal')) return BootstrapIcons.eye;
-    if (lower.contains('dental') || lower.contains('dent')) return BootstrapIcons.bag_plus;
-    if (lower.contains('obs') || lower.contains('gynae') || lower.contains('gyne')) return BootstrapIcons.person_heart;
-    if (lower.contains('neuro')) return Icons.psychology_outlined;
+    if (lower.contains('cardio')) { return BootstrapIcons.heart; }
+    if (lower.contains('paedia') || lower.contains('pedi')) {
+      return BootstrapIcons.emoji_smile;
+    }
+    if (lower.contains('ortho')) { return BootstrapIcons.universal_access; }
+    if (lower.contains('derma')) { return BootstrapIcons.person_bounding_box; }
+    if (lower.contains('ophthal')) { return BootstrapIcons.eye; }
+    if (lower.contains('dental') || lower.contains('dent')) {
+      return BootstrapIcons.bag_plus;
+    }
+    if (lower.contains('obs') ||
+        lower.contains('gynae') ||
+        lower.contains('gyne')) { return BootstrapIcons.person_heart; }
+    if (lower.contains('neuro')) { return Icons.psychology_outlined; }
     return BootstrapIcons.hospital;
   }
 }
 
 /// Royal blue curved hero header containing user greeting and Next Appointment card.
+class _PatientAppointmentsOverview extends StatelessWidget {
+  final String patientId;
+  const _PatientAppointmentsOverview({required this.patientId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<AppointmentModel>>(
+      stream: context
+          .read<AppointmentProvider>()
+          .patientAppointmentsStream(patientId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Text('Unable to load your appointments.'),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: LinearProgressIndicator(),
+          );
+        }
+        final appointments = snapshot.data ?? const <AppointmentModel>[];
+        final now = DateTime.now();
+        final upcoming = appointments
+            .where((appointment) =>
+                appointment.appointmentDate.isAfter(now) &&
+                !appointment.isCancelled)
+            .toList()
+          ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+        final pending =
+            appointments.where((appointment) => appointment.isPending).length;
+        final completed =
+            appointments.where((appointment) => appointment.isCompleted).length;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _PatientMetricCard(
+                    label: 'Upcoming',
+                    value: upcoming.length,
+                  ),
+                  const SizedBox(width: 8),
+                  _PatientMetricCard(
+                    label: 'Pending',
+                    value: pending,
+                  ),
+                  const SizedBox(width: 8),
+                  _PatientMetricCard(
+                    label: 'Completed',
+                    value: completed,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Next appointment',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (upcoming.isEmpty)
+                const Text(
+                  'You have no upcoming appointments.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                )
+              else
+                Card(
+                  child: ListTile(
+                    title: Text(upcoming.first.departmentName),
+                    subtitle: Text(
+                      '${DateFormat('EEE, MMM d').format(upcoming.first.appointmentDate)} · '
+                      '${upcoming.first.appointmentTime}\n'
+                      '${upcoming.first.doctorName ?? 'Doctor to be assigned'}',
+                    ),
+                    isThreeLine: true,
+                    trailing: Text(upcoming.first.status),
+                    onTap: () => context.push(
+                      '/patient/appointments/${upcoming.first.id}',
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PatientMetricCard extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _PatientMetricCard({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$value',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+            Text(label, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PatientHeroHeader extends StatelessWidget {
   final String displayName;
   final String uid;
@@ -307,7 +467,9 @@ class _PatientHeroHeader extends StatelessWidget {
                     color: AppColors.primaryLight,
                     child: Center(
                       child: Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'S',
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'S',
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 20,
@@ -378,14 +540,14 @@ class _PatientHeroHeader extends StatelessWidget {
                 .patientAppointmentsStream(uid),
             builder: (ctx, snap) {
               final appointments = snap.data ?? [];
-              final upcoming = appointments
-                  .where((a) => !a.isCancelled)
-                  .toList();
+              final upcoming =
+                  appointments.where((a) => !a.isCancelled).toList();
 
               // If an actual upcoming appointment exists, display it; otherwise, display the mockup standard
               final appt = upcoming.isNotEmpty ? upcoming.first : null;
               final dateStr = appt != null
-                  ? DateFormat('EEE, MMM d, yyyy • h:mm a').format(appt.appointmentDate)
+                  ? DateFormat('EEE, MMM d, yyyy • h:mm a')
+                      .format(appt.appointmentDate)
                   : 'Tue, Dec 2, 2025 • 10:00 AM';
               final deptName = appt?.departmentName ?? 'Cardiology';
 
@@ -760,8 +922,7 @@ class _NotifBannerTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: const Color(0xFFE2EBF7), width: 1),
+            border: Border.all(color: const Color(0xFFE2EBF7), width: 1),
           ),
           child: Row(
             children: [

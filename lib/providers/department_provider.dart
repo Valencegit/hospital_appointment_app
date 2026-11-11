@@ -46,6 +46,9 @@ class DepartmentProvider extends ChangeNotifier {
   Stream<List<SlotModel>> slotsStream(String departmentId, DateTime date) =>
       _service.slotsForDepartment(departmentId, date);
 
+  Stream<List<SlotModel>> doctorSlotsStream(String doctorId) =>
+      _service.slotsForDoctor(doctorId);
+
   // ── Departments ────────────────────────────────────────────────────────────
 
   Future<bool> saveDepartment(DepartmentModel dept) async {
@@ -58,10 +61,11 @@ class DepartmentProvider extends ChangeNotifier {
       final isDuplicate = existingDepartments.any(
         (existing) => existing.name.trim().toLowerCase() == normalizedName,
       );
-      if (isDuplicate && (dept.id.isEmpty ||
-          existingDepartments.any((existing) =>
-              existing.id != dept.id &&
-              existing.name.trim().toLowerCase() == normalizedName))) {
+      if (isDuplicate &&
+          (dept.id.isEmpty ||
+              existingDepartments.any((existing) =>
+                  existing.id != dept.id &&
+                  existing.name.trim().toLowerCase() == normalizedName))) {
         _error = 'A department with this name already exists.';
         return false;
       }

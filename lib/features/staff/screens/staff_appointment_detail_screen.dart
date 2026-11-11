@@ -8,21 +8,18 @@ import '../../../models/appointment_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/appointment_provider.dart';
 import '../../../services/appointment_service.dart';
-import '../../../services/firestore_service.dart';
 import '../../../shared/widgets/custom_button.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
 class StaffAppointmentDetailScreen extends StatelessWidget {
   final String appointmentId;
 
-  const StaffAppointmentDetailScreen(
-      {super.key, required this.appointmentId});
+  const StaffAppointmentDetailScreen({super.key, required this.appointmentId});
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AppointmentModel?>(
-      future:
-          context.read<AppointmentService>().getAppointment(appointmentId),
+      future: context.read<AppointmentService>().getAppointment(appointmentId),
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -53,25 +50,15 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
   AppointmentModel get a => widget.appointment;
 
   Future<void> _updateStatus(String newStatus) async {
-    final actorUid =
-        context.read<AuthProvider>().currentUser?.uid ?? '';
-
-    final ok = await context
-        .read<AppointmentProvider>()
-        .updateStatus(a.id, newStatus);
+    final ok =
+        await context.read<AppointmentProvider>().updateStatus(a.id, newStatus);
 
     if (mounted) {
       if (ok) {
-        // Write audit log
-        context.read<FirestoreService>().writeAuditLog(
-          actorUid: actorUid,
-          action: 'appointment_status_set_to_$newStatus',
-          recordRef: a.id,
-        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Status updated to ${newStatus.replaceAll('_', ' ')}.'),
+            content:
+                Text('Status updated to ${newStatus.replaceAll('_', ' ')}.'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -90,6 +77,13 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
   @override
   Widget build(BuildContext context) {
     final apptProvider = context.watch<AppointmentProvider>();
+    final auth = context.watch<AuthProvider>();
+    final role = auth.currentRole;
+    final isReceptionist = role.isReceptionist;
+    final isAdmin = role.isAdmin;
+    final isAssignedDoctor =
+        role.isDoctor && a.doctorId == auth.currentUser?.uid;
+    final canUpdateStatus = isReceptionist || isAdmin || isAssignedDoctor;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Appointment Details')),
@@ -97,8 +91,7 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
         child: apptProvider.isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding:
-                    const EdgeInsets.all(AppConstants.defaultPadding),
+                padding: const EdgeInsets.all(AppConstants.defaultPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -131,8 +124,7 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(a.patientName,
                                     style: const TextStyle(
@@ -142,8 +134,7 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
                                 const SizedBox(height: 2),
                                 Text(a.departmentName,
                                     style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12)),
+                                        color: Colors.white70, fontSize: 12)),
                               ],
                             ),
                           ),
@@ -154,15 +145,14 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
                     const SizedBox(height: 20),
 
                     // Details
-                    _InfoRow('Ref #',
-                        a.id.substring(0, 8).toUpperCase()),
-                    _InfoRow('Date',
+                    _InfoRow('Ref #', a.id.substring(0, 8).toUpperCase()),
+                    _InfoRow(
+                        'Date',
                         DateFormat('EEE, MMM d, yyyy')
                             .format(a.appointmentDate)),
                     _InfoRow('Time', a.appointmentTime),
                     _InfoRow('Booked On',
-                        DateFormat('MMM d, yyyy h:mm a')
-                            .format(a.bookedAt)),
+                        DateFormat('MMM d, yyyy h:mm a').format(a.bookedAt)),
 
                     if (a.notes != null && a.notes!.isNotEmpty) ...[
                       const SizedBox(height: 4),
@@ -173,60 +163,95 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
                       _InfoRow('Cancel Reason', a.cancellationReason!),
                     ],
 
-                    const SizedBox(height: 28),
-                    const Text('Update Status',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 12),
+                    if (canUpdateStatus) ...[
+                      const SizedBox(height: 28),
+                      const Text('Update Status',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15)),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Action buttons based on current status
-                    if (a.isPending) ...[
+                    if ((isReceptionist || isAdmin) && a.isPending) ...[
                       CustomButton(
                         text: 'Confirm Appointment',
                         icon: BootstrapIcons.check_circle,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusConfirmed),
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusConfirmed),
                       ),
                       const SizedBox(height: 8),
                       CustomButton(
                         text: 'Cancel Appointment',
                         variant: ButtonVariant.danger,
                         icon: BootstrapIcons.x_circle,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusCancelled),
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusCancelled),
                       ),
                     ],
-                    if (a.isConfirmed) ...[
+                    if ((isReceptionist || isAdmin) && a.isConfirmed) ...[
                       CustomButton(
-                        text: 'Mark as Completed',
-                        icon: BootstrapIcons.check_all,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusCompleted),
+                        text: 'Check In Patient',
+                        icon: BootstrapIcons.person_check,
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusCheckedIn),
                       ),
                       const SizedBox(height: 8),
+                      CustomButton(
+                        text: 'Mark as No-show',
+                        variant: ButtonVariant.outlined,
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusNoShow),
+                      ),
+                      const SizedBox(height: 8),
+                      if (isAdmin) ...[
+                        CustomButton(
+                          text: 'Mark as Completed',
+                          icon: BootstrapIcons.check_all,
+                          onPressed: () =>
+                              _updateStatus(AppConstants.statusCompleted),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       CustomButton(
                         text: 'Cancel Appointment',
                         variant: ButtonVariant.danger,
                         icon: BootstrapIcons.x_circle,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusCancelled),
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusCancelled),
                       ),
                     ],
-                    if (a.status ==
-                        AppConstants.statusCancelRequested) ...[
+                    if (a.status == AppConstants.statusCancelRequested &&
+                        (isReceptionist || isAdmin)) ...[
                       CustomButton(
                         text: 'Approve Cancellation',
                         variant: ButtonVariant.danger,
                         icon: BootstrapIcons.check,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusCancelled),
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusCancelled),
                       ),
                       const SizedBox(height: 8),
                       CustomButton(
                         text: 'Reject — Keep Confirmed',
                         variant: ButtonVariant.outlined,
-                        onPressed: () => _updateStatus(
-                            AppConstants.statusConfirmed),
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusConfirmed),
+                      ),
+                    ],
+                    if (isAssignedDoctor &&
+                        (a.isConfirmed ||
+                            a.status == AppConstants.statusCheckedIn)) ...[
+                      CustomButton(
+                        text: 'Mark as Completed',
+                        icon: BootstrapIcons.check_all,
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusCompleted),
+                      ),
+                      const SizedBox(height: 8),
+                      CustomButton(
+                        text: 'Mark as No-show',
+                        variant: ButtonVariant.outlined,
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusNoShow),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -253,13 +278,13 @@ class _InfoRow extends StatelessWidget {
           SizedBox(
             width: 110,
             child: Text(label,
-                style: const TextStyle(
-                    color: AppColors.textMuted, fontSize: 13)),
+                style:
+                    const TextStyle(color: AppColors.textMuted, fontSize: 13)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 13)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
           ),
         ],
       ),
@@ -297,14 +322,12 @@ class _StatusChip extends StatelessWidget {
         fg = Colors.white;
     }
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration:
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(
         status.replaceAll('_', ' '),
-        style: TextStyle(
-            color: fg, fontSize: 11, fontWeight: FontWeight.w600),
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }

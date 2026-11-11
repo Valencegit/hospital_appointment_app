@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/account_pending_screen.dart';
 import '../../features/splash/screens/splash_screen.dart';
 
 // Patient
@@ -18,11 +19,11 @@ import '../../features/patient/screens/appointment_detail_screen.dart';
 import '../../features/patient/screens/notifications_screen.dart';
 
 // Staff
-import '../../features/staff/screens/staff_dashboard_screen.dart';
 import '../../features/staff/screens/staff_appointments_screen.dart';
 import '../../features/staff/screens/staff_appointment_detail_screen.dart';
 import '../../features/staff/screens/manage_slots_screen.dart';
 import '../../features/staff/screens/staff_patients_screen.dart';
+import '../../features/staff/screens/role_dashboards.dart';
 
 // Admin
 import '../../features/admin/screens/admin_dashboard_screen.dart';
@@ -31,6 +32,7 @@ import '../../features/admin/screens/manage_departments_screen.dart';
 import '../../features/admin/screens/reports_screen.dart';
 import '../../features/admin/screens/audit_logs_screen.dart';
 
+import '../enums/user_role.dart';
 import '../../providers/auth_provider.dart';
 
 /// Centralized declarative router enforcing authentication states and
@@ -61,18 +63,43 @@ class AppRouter {
       if (!isAuth) return isAuthRoute ? null : '/login';
 
       // Authenticated users leaving auth screens → go to their dashboard
-      if (isAuthRoute) return _dashboardForRole(authProvider.currentRole);
+      if (isAuthRoute) return dashboardForRole(authProvider.currentRole);
 
       // Role-based access guards
       final role = authProvider.currentRole;
       if (loc.startsWith('/admin') && !role.isAdmin) {
-        return _dashboardForRole(role);
+        return dashboardForRole(role);
       }
-      if (loc.startsWith('/staff') && !role.isStaff && !role.isAdmin) {
-        return _dashboardForRole(role);
+      if ((loc.startsWith('/receptionist') && !role.isReceptionist) ||
+          (loc.startsWith('/doctor') && !role.isDoctor) ||
+          (loc.startsWith('/scheduling') && !role.isSchedulingOfficer)) {
+        return dashboardForRole(role);
       }
-      if (loc.startsWith('/patient') && !role.isPatient && !role.isAdmin) {
-        return _dashboardForRole(role);
+      if (loc == '/staff' || loc == '/staff-home') {
+        return dashboardForRole(role);
+      }
+      if ((loc == '/staff/appointments' ||
+              loc.startsWith('/staff/appointments/')) &&
+          !role.isReceptionist &&
+          !role.isDoctor &&
+          !role.isAdmin) {
+        return dashboardForRole(role);
+      }
+      if (loc.startsWith('/staff/schedules') &&
+          !role.isSchedulingOfficer &&
+          !role.isAdmin) {
+        return dashboardForRole(role);
+      }
+      if (loc.startsWith('/staff/patients') &&
+          !role.isReceptionist &&
+          !role.isAdmin) {
+        return dashboardForRole(role);
+      }
+      if (loc.startsWith('/staff/reports') && !role.isAdmin) {
+        return dashboardForRole(role);
+      }
+      if (loc.startsWith('/patient') && !role.isPatient) {
+        return dashboardForRole(role);
       }
 
       return null;
@@ -94,6 +121,10 @@ class AppRouter {
       GoRoute(
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/account-pending',
+        builder: (_, __) => const AccountPendingScreen(),
       ),
 
       // ── Patient ────────────────────────────────────────────────────────
@@ -161,7 +192,7 @@ class AppRouter {
       // ── Staff ──────────────────────────────────────────────────────────
       GoRoute(
         path: '/staff',
-        builder: (_, __) => const StaffDashboardScreen(),
+        redirect: (_, __) => '/account-pending',
       ),
       GoRoute(
         path: '/staff-home',
@@ -188,6 +219,19 @@ class AppRouter {
       GoRoute(
         path: '/staff/reports',
         builder: (_, __) => const ReportsScreen(),
+      ),
+
+      GoRoute(
+        path: '/receptionist',
+        builder: (_, __) => const ReceptionistDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/doctor',
+        builder: (_, __) => const DoctorDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/scheduling',
+        builder: (_, __) => const SchedulingOfficerDashboardScreen(),
       ),
 
       // ── Admin ──────────────────────────────────────────────────────────
@@ -224,9 +268,12 @@ class AppRouter {
     ),
   );
 
-  static String _dashboardForRole(dynamic role) {
+  static String dashboardForRole(UserRole role) {
     if (role.isAdmin) return '/admin';
-    if (role.isStaff) return '/staff';
-    return '/patient';
+    if (role.isDoctor) return '/doctor';
+    if (role.isReceptionist) return '/receptionist';
+    if (role.isSchedulingOfficer) return '/scheduling';
+    if (role.isPatient) return '/patient';
+    return '/account-pending';
   }
 }

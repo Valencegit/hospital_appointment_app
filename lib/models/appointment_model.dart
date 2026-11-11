@@ -8,6 +8,8 @@ class AppointmentModel {
   final String slotId;
   final String departmentId;
   final String departmentName;
+  final String? doctorId;
+  final String? doctorName;
   final DateTime appointmentDate;
   final String appointmentTime;
   final String status;
@@ -23,6 +25,8 @@ class AppointmentModel {
     required this.slotId,
     required this.departmentId,
     required this.departmentName,
+    this.doctorId,
+    this.doctorName,
     required this.appointmentDate,
     required this.appointmentTime,
     this.status = AppConstants.statusPending,
@@ -46,7 +50,10 @@ class AppointmentModel {
       slotId: d['slotId'] as String? ?? '',
       departmentId: d['departmentId'] as String? ?? '',
       departmentName: d['departmentName'] as String? ?? '',
-      appointmentDate: (d['appointmentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      doctorId: d['doctorId'] as String?,
+      doctorName: d['doctorName'] as String?,
+      appointmentDate:
+          (d['appointmentDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       appointmentTime: d['appointmentTime'] as String? ?? '',
       status: d['status'] as String? ?? AppConstants.statusPending,
       notes: d['notes'] as String?,
@@ -62,11 +69,14 @@ class AppointmentModel {
         'slotId': slotId,
         'departmentId': departmentId,
         'departmentName': departmentName,
+        if (doctorId != null) 'doctorId': doctorId,
+        if (doctorName != null) 'doctorName': doctorName,
         'appointmentDate': Timestamp.fromDate(appointmentDate),
         'appointmentTime': appointmentTime,
         'status': status,
         if (notes != null) 'notes': notes,
-        if (cancellationReason != null) 'cancellationReason': cancellationReason,
+        if (cancellationReason != null)
+          'cancellationReason': cancellationReason,
         'bookedAt': Timestamp.fromDate(bookedAt),
         'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       };
@@ -84,6 +94,8 @@ class AppointmentModel {
       slotId: slotId,
       departmentId: departmentId,
       departmentName: departmentName,
+      doctorId: doctorId,
+      doctorName: doctorName,
       appointmentDate: appointmentDate,
       appointmentTime: appointmentTime,
       status: status ?? this.status,

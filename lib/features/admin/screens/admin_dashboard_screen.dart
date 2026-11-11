@@ -1,14 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/appointment_provider.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
 /// Screen 18: Admin Dashboard — stats overview with navigation to all admin tools.
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
+
+  Future<Map<String, int>> _loadCounts() async {
+    final db = FirebaseFirestore.instance;
+    Future<int> count(Query<Map<String, dynamic>> query) async =>
+        (await query.count().get()).count ?? 0;
+
+    final results = await Future.wait<int>([
+      count(db.collection('users').where('role', isEqualTo: 'patient')),
+      count(db.collection('users').where(
+        'role',
+        whereIn: ['doctor', 'receptionist', 'scheduling_officer'],
+      )),
+      count(db.collection('departments')),
+      count(db.collection('appointments')),
+      count(
+          db.collection('appointments').where('status', isEqualTo: 'pending')),
+      count(db
+          .collection('appointments')
+          .where('status', isEqualTo: 'completed')),
+    ]);
+    return {
+      'patients': results[0],
+      'staff': results[1],
+      'departments': results[2],
+      'appointments': results[3],
+      'pending': results[4],
+      'completed': results[5],
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,13 +118,23 @@ class AdminDashboardScreen extends StatelessWidget {
                 delegate: SliverChildListDelegate([
                   // ── Stats Grid ─────────────────────────────────────────────
                   FutureBuilder<Map<String, int>>(
-                    future: context
-                        .read<AppointmentProvider>()
-                        .getSummary(),
+                    future: _loadCounts(),
                     builder: (ctx, snap) {
-                      final s = snap.data ?? {};
-                      final total = s['total'] ?? 0;
-
+                      if (snap.hasError) {
+                        return const Text(
+                          'Unable to load system overview.',
+                          style: TextStyle(color: AppColors.error),
+                        );
+                      }
+                      if (!snap.hasData) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      final counts = snap.data!;
                       return GridView.count(
                         crossAxisCount: 2,
                         shrinkWrap: true,
@@ -104,29 +143,41 @@ class AdminDashboardScreen extends StatelessWidget {
                         mainAxisSpacing: 12,
                         childAspectRatio: 1.55,
                         children: [
-                          const _AdminStatCard(
+                          _AdminStatCard(
                             icon: BootstrapIcons.people_fill,
-                            title: 'Total Users',
-                            count: '1,250',
+                            title: 'Total Patients',
+                            count: '${counts['patients']}',
                             color: AppColors.primary,
                           ),
-                          const _AdminStatCard(
-                            icon: BootstrapIcons.person,
-                            title: 'Patients',
-                            count: '1,180',
-                            color: Color(0xFF0284C7),
-                          ),
-                          const _AdminStatCard(
+                          _AdminStatCard(
                             icon: BootstrapIcons.person_badge,
                             title: 'Staff',
-                            count: '68',
-                            color: Color(0xFF7C3AED),
+                            count: '${counts['staff']}',
+                            color: const Color(0xFF7C3AED),
+                          ),
+                          _AdminStatCard(
+                            icon: BootstrapIcons.hospital,
+                            title: 'Departments',
+                            count: '${counts['departments']}',
+                            color: const Color(0xFF0284C7),
                           ),
                           _AdminStatCard(
                             icon: BootstrapIcons.calendar_fill,
                             title: 'Appointments',
-                            count: total > 0 ? '$total' : '8,420',
+                            count: '${counts['appointments']}',
                             color: AppColors.success,
+                          ),
+                          _AdminStatCard(
+                            icon: BootstrapIcons.clock,
+                            title: 'Pending',
+                            count: '${counts['pending']}',
+                            color: const Color(0xFFD97706),
+                          ),
+                          _AdminStatCard(
+                            icon: BootstrapIcons.check_circle,
+                            title: 'Completed',
+                            count: '${counts['completed']}',
+                            color: const Color(0xFF059669),
                           ),
                         ],
                       );
@@ -173,25 +224,21 @@ class AdminDashboardScreen extends StatelessWidget {
                         _AdminMenuTile(
                           icon: BootstrapIcons.hospital,
                           title: 'Department Management',
-                          subtitle:
-                              'Add, edit, activate departments',
-                          onTap: () =>
-                              context.push('/admin/departments'),
+                          subtitle: 'Add, edit, activate departments',
+                          onTap: () => context.push('/admin/departments'),
                         ),
                         const Divider(height: 1, indent: 58),
                         _AdminMenuTile(
                           icon: BootstrapIcons.bar_chart,
                           title: 'Reports',
-                          subtitle:
-                              'Appointment summaries by date/dept',
+                          subtitle: 'Appointment summaries by date/dept',
                           onTap: () => context.push('/admin/reports'),
                         ),
                         const Divider(height: 1, indent: 58),
                         _AdminMenuTile(
                           icon: BootstrapIcons.clipboard,
                           title: 'Audit Logs',
-                          subtitle:
-                              'Administrative action history',
+                          subtitle: 'Administrative action history',
                           isLast: true,
                           onTap: () => context.push('/admin/audit'),
                         ),
@@ -214,8 +261,7 @@ class AdminDashboardScreen extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border:
-            Border(top: BorderSide(color: Color(0xFFEAF0F8), width: 1)),
+        border: Border(top: BorderSide(color: Color(0xFFEAF0F8), width: 1)),
       ),
       child: BottomNavigationBar(
         currentIndex: 0,
@@ -238,13 +284,9 @@ class AdminDashboardScreen extends StatelessWidget {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: const Color(0xFF94A3B8),
         selectedLabelStyle: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 11,
-            fontWeight: FontWeight.w600),
+            fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 11,
-            fontWeight: FontWeight.w500),
+            fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w500),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(BootstrapIcons.house_fill),
@@ -288,8 +330,7 @@ class _AdminStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: color.withValues(alpha: 0.15), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

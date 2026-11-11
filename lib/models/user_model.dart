@@ -35,7 +35,8 @@ class UserModel {
   bool get isStaff =>
       role == AppConstants.roleStaff ||
       role == AppConstants.roleDoctor ||
-      role == AppConstants.roleReceptionist;
+      role == AppConstants.roleReceptionist ||
+      role == AppConstants.roleSchedulingOfficer;
   bool get isAdmin => role == AppConstants.roleAdmin;
 
   /// First name extracted from full name.
@@ -70,8 +71,10 @@ class UserModel {
     return UserModel(
       uid: documentId ?? (map['uid'] as String? ?? ''),
       email: map['email'] as String? ?? '',
-      fullName: map['full_name'] as String? ?? (map['fullName'] as String? ?? ''),
-      phoneNumber: map['phone_number'] as String? ?? (map['phoneNumber'] as String? ?? ''),
+      fullName:
+          map['full_name'] as String? ?? (map['fullName'] as String? ?? ''),
+      phoneNumber: map['phone_number'] as String? ??
+          (map['phoneNumber'] as String? ?? ''),
       role: (map['role'] as String? ?? AppConstants.rolePatient).toLowerCase(),
       photoUrl: map['photo_url'] as String? ?? map['photoUrl'] as String?,
       isActive: map['is_active'] as bool? ?? (map['isActive'] as bool? ?? true),

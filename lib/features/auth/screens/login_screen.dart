@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/user_role.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/utils/ui_helpers.dart';
 import '../../../core/utils/validators.dart';
 import '../../../providers/auth_provider.dart';
@@ -138,13 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _routeByRole(UserRole role) {
-    if (role.isAdmin) {
-      context.go('/admin');
-    } else if (role.isStaff) {
-      context.go('/staff');
-    } else {
-      context.go('/patient');
-    }
+    context.go(AppRouter.dashboardForRole(role));
   }
 
   @override

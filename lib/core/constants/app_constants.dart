@@ -32,6 +32,7 @@ class AppConstants {
   static const String roleStaff = 'staff';
   static const String roleDoctor = 'doctor';
   static const String roleReceptionist = 'receptionist';
+  static const String roleSchedulingOfficer = 'scheduling_officer';
   static const String roleAdmin = 'admin';
 
   // Appointment Statuses
@@ -39,6 +40,8 @@ class AppConstants {
   static const String statusConfirmed = 'confirmed';
   static const String statusCancelled = 'cancelled';
   static const String statusCompleted = 'completed';
+  static const String statusNoShow = 'no_show';
+  static const String statusCheckedIn = 'checked_in';
   static const String statusRescheduled = 'rescheduled';
   static const String statusCancelRequested = 'cancel_requested';
   static const String statusRescheduleRequested = 'reschedule_requested';
@@ -66,12 +69,18 @@ class AppConstants {
   static const int phoneLength = 10;
 
   // Error Messages
-  static const String errGeneric = 'An unexpected error occurred. Please try again.';
-  static const String errNetwork = 'Network connectivity issue. Please check your connection.';
-  static const String errAuthFailed = 'Authentication failed. Please verify your credentials.';
-  static const String errUserNotFound = 'No user account found with this email.';
+  static const String errGeneric =
+      'An unexpected error occurred. Please try again.';
+  static const String errNetwork =
+      'Network connectivity issue. Please check your connection.';
+  static const String errAuthFailed =
+      'Authentication failed. Please verify your credentials.';
+  static const String errUserNotFound =
+      'No user account found with this email.';
   static const String errWrongPassword = 'Incorrect password provided.';
-  static const String errEmailInUse = 'An account already exists with this email address.';
-  static const String errWeakPassword = 'Password is too weak. Please use at least 6 characters.';
+  static const String errEmailInUse =
+      'An account already exists with this email address.';
+  static const String errWeakPassword =
+      'Password is too weak. Please use at least 6 characters.';
   static const String errInvalidEmail = 'Please provide a valid email address.';
 }

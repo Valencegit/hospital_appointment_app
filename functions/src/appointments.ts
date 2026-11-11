@@ -34,20 +34,22 @@ export const bookAppointment = onCall(
         "You must be signed in to book an appointment."
       );
     }
+    if (request.auth.token.role !== "patient") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only patient accounts can book appointments."
+      );
+    }
 
     const {
       patientId,
-      patientName,
       slotId,
       departmentId,
-      departmentName,
-      appointmentDate,
-      appointmentTime,
       notes,
     } = request.data;
 
     // ── Input validation ───────────────────────────────────────────────────
-    if (!patientId || !slotId || !departmentId || !appointmentDate || !appointmentTime) {
+    if (!patientId || !slotId || !departmentId) {
       throw new HttpsError(
         "invalid-argument",
         "Missing required booking fields."
@@ -63,8 +65,23 @@ export const bookAppointment = onCall(
     }
 
     const db = admin.firestore();
-    const slotRef = db.collection("slots").doc(slotId);
+    const patientDoc = await db.collection("users").doc(patientId).get();
+    const patientData = patientDoc.data();
+    if (
+      !patientDoc.exists ||
+      patientData?.role !== "patient" ||
+      patientData?.is_active === false
+    ) {
+      throw new HttpsError(
+        "permission-denied",
+        "The patient account is not active."
+      );
+    }
+    const patientName =
+      patientData.full_name ?? patientData.fullName ?? "Patient";
+    const slotRef = db.collection("appointment_slots").doc(slotId);
     let appointmentId = "";
+    let appointmentDepartmentName = "hospital";
 
     // ── Firestore transaction ──────────────────────────────────────────────
     try {
@@ -85,6 +102,23 @@ export const bookAppointment = onCall(
             "This slot is no longer active."
           );
         }
+        if (slot.departmentId !== departmentId) {
+          throw new HttpsError(
+            "failed-precondition",
+            "The selected slot does not belong to this department."
+          );
+        }
+        if (
+          !(slot.date instanceof admin.firestore.Timestamp) ||
+          typeof slot.startTime !== "string" ||
+          typeof slot.departmentName !== "string"
+        ) {
+          throw new HttpsError(
+            "failed-precondition",
+            "The selected slot is missing required schedule details."
+          );
+        }
+        appointmentDepartmentName = slot.departmentName;
         if (bookedCount >= capacity) {
           throw new HttpsError(
             "failed-precondition",
@@ -99,10 +133,12 @@ export const bookAppointment = onCall(
           patientId,
           patientName,
           slotId,
-          departmentId,
-          departmentName,
-          appointmentDate: new Date(appointmentDate),
-          appointmentTime,
+          departmentId: slot.departmentId,
+          departmentName: slot.departmentName,
+          doctorId: typeof slot.doctorId === "string" ? slot.doctorId : null,
+          doctorName: typeof slot.doctorName === "string" ? slot.doctorName : null,
+          appointmentDate: slot.date,
+          appointmentTime: slot.startTime,
           status: "pending",
           notes: notes ?? null,
           bookedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -125,7 +161,7 @@ export const bookAppointment = onCall(
       await db.collection("notifications").add({
         userId: patientId,
         title: "Appointment Requested",
-        body: `Your ${departmentName} appointment at ${appointmentTime} is pending confirmation.`,
+        body: `Your ${appointmentDepartmentName} appointment is pending confirmation.`,
         type: "booking_confirmed",
         appointmentId,
         isRead: false,

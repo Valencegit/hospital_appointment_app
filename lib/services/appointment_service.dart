@@ -65,14 +65,11 @@ class AppointmentService {
         case 'unauthenticated':
           throw Exception('You must be signed in to book an appointment.');
         case 'permission-denied':
-          throw Exception(
-              'You are not permitted to book this appointment.');
+          throw Exception('You are not permitted to book this appointment.');
         case 'deadline-exceeded':
-          throw Exception(
-              'The booking request timed out. Please try again.');
+          throw Exception('The booking request timed out. Please try again.');
         default:
-          throw Exception(
-              e.message ?? 'Booking failed. Please try again.');
+          throw Exception(e.message ?? 'Booking failed. Please try again.');
       }
     } catch (e) {
       // Re-throw typed exceptions unchanged; wrap everything else
@@ -91,12 +88,19 @@ class AppointmentService {
         .map((s) => s.docs.map(AppointmentModel.fromFirestore).toList());
   }
 
+  Stream<List<AppointmentModel>> doctorAppointmentsStream(String doctorId) {
+    return _db
+        .collection(AppConstants.appointmentsCollection)
+        .where('doctorId', isEqualTo: doctorId)
+        .orderBy('appointmentDate')
+        .snapshots()
+        .map((s) => s.docs.map(AppointmentModel.fromFirestore).toList());
+  }
+
   /// Fetch a single appointment by ID.
   Future<AppointmentModel?> getAppointment(String id) async {
-    final doc = await _db
-        .collection(AppConstants.appointmentsCollection)
-        .doc(id)
-        .get();
+    final doc =
+        await _db.collection(AppConstants.appointmentsCollection).doc(id).get();
     return doc.exists ? AppointmentModel.fromFirestore(doc) : null;
   }
 
@@ -104,8 +108,7 @@ class AppointmentService {
   /// Writes a cancel-request status. Staff must approve via their dashboard.
   /// Firestore Security Rules allow patients to update only this limited
   /// set of fields on their own appointment document.
-  Future<void> requestCancellation(
-      String appointmentId, String reason) async {
+  Future<void> requestCancellation(String appointmentId, String reason) async {
     await _db
         .collection(AppConstants.appointmentsCollection)
         .doc(appointmentId)

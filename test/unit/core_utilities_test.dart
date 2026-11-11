@@ -26,12 +26,17 @@ void main() {
 
     test('DateFormatter timeAgo handles various durations', () {
       final now = DateTime.now();
-      expect(DateFormatter.timeAgo(now.subtract(const Duration(seconds: 30))), 'Just now');
-      expect(DateFormatter.timeAgo(now.subtract(const Duration(minutes: 5))), '5m ago');
-      expect(DateFormatter.timeAgo(now.subtract(const Duration(hours: 3))), '3h ago');
-      expect(DateFormatter.timeAgo(now.subtract(const Duration(days: 4))), '4d ago');
+      expect(DateFormatter.timeAgo(now.subtract(const Duration(seconds: 30))),
+          'Just now');
+      expect(DateFormatter.timeAgo(now.subtract(const Duration(minutes: 5))),
+          '5m ago');
+      expect(DateFormatter.timeAgo(now.subtract(const Duration(hours: 3))),
+          '3h ago');
+      expect(DateFormatter.timeAgo(now.subtract(const Duration(days: 4))),
+          '4d ago');
       final pastDate = now.subtract(const Duration(days: 10));
-      expect(DateFormatter.timeAgo(pastDate), DateFormatter.formatDate(pastDate));
+      expect(
+          DateFormatter.timeAgo(pastDate), DateFormatter.formatDate(pastDate));
     });
 
     test('UserRole conversions, role queries and display attributes', () {
@@ -42,8 +47,8 @@ void main() {
       expect(UserRole.fromString('receptionist'), UserRole.receptionist);
       expect(UserRole.fromString('admin'), UserRole.admin);
       expect(UserRole.fromString('administrator'), UserRole.admin);
-      expect(UserRole.fromString('unknown_role'), UserRole.patient);
-      expect(UserRole.fromString(null), UserRole.patient);
+      expect(UserRole.fromString('unknown_role'), UserRole.pending);
+      expect(UserRole.fromString(null), UserRole.pending);
 
       expect(UserRole.patient.toValue(), 'patient');
       expect(UserRole.doctor.toValue(), 'doctor');
@@ -52,8 +57,8 @@ void main() {
       expect(UserRole.admin.toValue(), 'admin');
 
       expect(UserRole.patient.displayName, 'Patient');
-      expect(UserRole.doctor.displayName, 'Doctor / Specialist');
-      expect(UserRole.staff.displayName, 'Hospital Staff');
+      expect(UserRole.doctor.displayName, 'Doctor');
+      expect(UserRole.staff.displayName, 'Staff (Legacy)');
       expect(UserRole.receptionist.displayName, 'Receptionist');
       expect(UserRole.admin.displayName, 'Administrator');
 
@@ -91,7 +96,8 @@ void main() {
       expect(AppColors.statusConfirmedText, const Color(0xFF0EA568));
     });
 
-    testWidgets('AppTheme generates light and dark themes properly', (tester) async {
+    testWidgets('AppTheme generates light and dark themes properly',
+        (tester) async {
       final light = AppTheme.lightTheme;
       expect(light.brightness, Brightness.light);
       expect(light.useMaterial3, isTrue);

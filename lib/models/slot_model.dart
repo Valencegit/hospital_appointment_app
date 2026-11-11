@@ -4,9 +4,11 @@ class SlotModel {
   final String id;
   final String departmentId;
   final String departmentName;
+  final String? doctorId;
+  final String? doctorName;
   final DateTime date;
-  final String startTime;   // e.g. "09:00 AM"
-  final String endTime;     // e.g. "09:30 AM"
+  final String startTime; // e.g. "09:00 AM"
+  final String endTime; // e.g. "09:30 AM"
   final int capacity;
   final int bookedCount;
   final bool isActive;
@@ -17,6 +19,8 @@ class SlotModel {
     required this.id,
     required this.departmentId,
     required this.departmentName,
+    this.doctorId,
+    this.doctorName,
     required this.date,
     required this.startTime,
     required this.endTime,
@@ -36,6 +40,8 @@ class SlotModel {
       id: doc.id,
       departmentId: d['departmentId'] as String? ?? '',
       departmentName: d['departmentName'] as String? ?? '',
+      doctorId: d['doctorId'] as String?,
+      doctorName: d['doctorName'] as String?,
       date: (d['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       startTime: d['startTime'] as String? ?? '',
       endTime: d['endTime'] as String? ?? '',
@@ -50,6 +56,8 @@ class SlotModel {
   Map<String, dynamic> toFirestore() => {
         'departmentId': departmentId,
         'departmentName': departmentName,
+        if (doctorId != null) 'doctorId': doctorId,
+        if (doctorName != null) 'doctorName': doctorName,
         'date': Timestamp.fromDate(date),
         'startTime': startTime,
         'endTime': endTime,

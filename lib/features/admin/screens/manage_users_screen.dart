@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../models/user_model.dart';
-import '../../../providers/auth_provider.dart';
-import '../../../services/firestore_service.dart';
 import '../../../services/user_service.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
@@ -26,7 +23,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     ('all', 'All'),
     (AppConstants.rolePatient, 'Patients'),
     (AppConstants.roleStaff, 'Staff'),
+    (AppConstants.roleReceptionist, 'Receptionists'),
     (AppConstants.roleDoctor, 'Doctors'),
+    (AppConstants.roleSchedulingOfficer, 'Scheduling'),
     (AppConstants.roleAdmin, 'Admins'),
   ];
 
@@ -79,27 +78,22 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 itemCount: _roleFilters.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final (value, label) = _roleFilters[i];
                   final selected = _role == value;
                   return FilterChip(
-                    label: Text(label,
-                        style: const TextStyle(fontSize: 12)),
+                    label: Text(label, style: const TextStyle(fontSize: 12)),
                     selected: selected,
-                    onSelected: (_) =>
-                        setState(() => _role = value),
+                    onSelected: (_) => setState(() => _role = value),
                     selectedColor: AppColors.primary,
                     checkmarkColor: Colors.white,
                     labelStyle: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : AppColors.textPrimary),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4),
+                        color: selected ? Colors.white : AppColors.textPrimary),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   );
                 },
               ),
@@ -112,15 +106,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               stream: UserService().usersStream(),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
                 final users = (snap.data ?? []).where((u) {
                   final matchesSearch = _search.isEmpty ||
                       u.fullName.toLowerCase().contains(_search) ||
                       u.email.toLowerCase().contains(_search);
-                  final matchesRole =
-                      _role == 'all' || u.role == _role;
+                  final matchesRole = _role == 'all' || u.role == _role;
                   return matchesSearch && matchesRole;
                 }).toList();
 
@@ -136,21 +128,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           _search.isNotEmpty
                               ? 'No results for "$_search"'
                               : 'No users found',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary),
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
                   );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.all(
-                      AppConstants.defaultPadding),
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
                   itemCount: users.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      _UserTile(user: users[i]),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) => _UserTile(user: users[i]),
                 );
               },
             ),
@@ -170,17 +159,14 @@ class _UserTile extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius:
-            BorderRadius.circular(AppConstants.defaultBorderRadius),
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
         border: Border.all(color: AppColors.divider),
       ),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 20,
-          backgroundColor:
-              _roleColor(user.role).withValues(alpha: 0.15),
+          backgroundColor: _roleColor(user.role).withValues(alpha: 0.15),
           child: Text(
             user.fullName.isNotEmpty
                 ? user.fullName[0].toUpperCase()
@@ -238,16 +224,12 @@ class _UserTile extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context, UserModel user) {
-    final actorUid =
-        context.read<AuthProvider>().currentUser?.uid ?? '';
     final userService = UserService();
-    final firestoreService = context.read<FirestoreService>();
 
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
@@ -264,8 +246,7 @@ class _UserTile extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               user.fullName.isNotEmpty ? user.fullName : user.email,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 16),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
             const SizedBox(height: 4),
             _RoleBadge(role: user.role),
@@ -278,31 +259,18 @@ class _UserTile extends StatelessWidget {
                 user.isActive
                     ? BootstrapIcons.slash_circle
                     : BootstrapIcons.check_circle,
-                color: user.isActive
-                    ? AppColors.error
-                    : AppColors.success,
+                color: user.isActive ? AppColors.error : AppColors.success,
               ),
               title: Text(
-                user.isActive
-                    ? 'Deactivate Account'
-                    : 'Activate Account',
+                user.isActive ? 'Deactivate Account' : 'Activate Account',
                 style: TextStyle(
-                  color: user.isActive
-                      ? AppColors.error
-                      : AppColors.success,
+                  color: user.isActive ? AppColors.error : AppColors.success,
                 ),
               ),
               onTap: () async {
                 Navigator.pop(context);
                 await userService.setUserActive(user.uid,
                     active: !user.isActive);
-                firestoreService.writeAuditLog(
-                  actorUid: actorUid,
-                  action: user.isActive
-                      ? 'user_deactivated'
-                      : 'user_activated',
-                  recordRef: user.uid,
-                );
               },
             ),
 
@@ -321,8 +289,9 @@ class _UserTile extends StatelessWidget {
 
             for (final role in [
               AppConstants.rolePatient,
-              AppConstants.roleStaff,
+              AppConstants.roleReceptionist,
               AppConstants.roleDoctor,
+              AppConstants.roleSchedulingOfficer,
               AppConstants.roleAdmin,
             ])
               if (role != user.role)
@@ -335,11 +304,6 @@ class _UserTile extends StatelessWidget {
                   onTap: () async {
                     Navigator.pop(context);
                     await userService.updateUserRole(user.uid, role);
-                    firestoreService.writeAuditLog(
-                      actorUid: actorUid,
-                      action: 'user_role_changed_to_$role',
-                      recordRef: user.uid,
-                    );
                   },
                 ),
           ],
@@ -377,11 +341,11 @@ class _RoleBadge extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Text(role,
-          style: TextStyle(
-              color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
+          style:
+              TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -395,9 +359,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.statusConfirmed
-            : AppColors.statusCancelled,
+        color: isActive ? AppColors.statusConfirmed : AppColors.statusCancelled,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

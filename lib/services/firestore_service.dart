@@ -134,10 +134,13 @@ class FirestoreService {
   Future<PatientModel?> getPatientProfile(String uid) => getPatient(uid);
 
   Future<void> savePatient(PatientModel patient) async {
-    await _patientsCol.doc(patient.uid).set(patient.toMap(), SetOptions(merge: true));
+    await _patientsCol
+        .doc(patient.uid)
+        .set(patient.toMap(), SetOptions(merge: true));
   }
 
-  Future<void> updatePatientProfile(PatientModel patient) => savePatient(patient);
+  Future<void> updatePatientProfile(PatientModel patient) =>
+      savePatient(patient);
 
   // ---------------------------------------------------------------------------
   // Staff Operations
@@ -154,7 +157,13 @@ class FirestoreService {
     String specialization = 'General Physician',
     String licenseNumber = '',
     double consultationFee = 0.0,
-    List<String> availableDays = const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    List<String> availableDays = const [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday'
+    ],
   }) async {
     try {
       final parts = fullName.trim().split(' ');
@@ -222,14 +231,15 @@ class FirestoreService {
         email: email,
         phoneNumber: phoneNumber,
         department: department,
-        permissions: permissions ?? const [
-          'manage_users',
-          'manage_staff',
-          'manage_departments',
-          'manage_slots',
-          'view_analytics',
-          'system_configuration',
-        ],
+        permissions: permissions ??
+            const [
+              'manage_users',
+              'manage_staff',
+              'manage_departments',
+              'manage_slots',
+              'view_analytics',
+              'system_configuration',
+            ],
         createdAt: DateTime.now(),
       );
       await _adminsCol.doc(uid).set(admin.toMap(), SetOptions(merge: true));
@@ -279,7 +289,8 @@ class FirestoreService {
   }
 
   Future<void> saveDepartment(DepartmentModel dept) async {
-    final ref = dept.id.isEmpty ? _departmentsCol.doc() : _departmentsCol.doc(dept.id);
+    final ref =
+        dept.id.isEmpty ? _departmentsCol.doc() : _departmentsCol.doc(dept.id);
     final data = dept.toFirestore();
     data['department_id'] = ref.id;
     await ref.set(data, SetOptions(merge: true));
@@ -290,7 +301,8 @@ class FirestoreService {
     await _departmentsCol.doc(id).update(data);
   }
 
-  Stream<List<SlotModel>> slotsForDepartment(String departmentId, DateTime date) {
+  Stream<List<SlotModel>> slotsForDepartment(
+      String departmentId, DateTime date) {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
 
@@ -304,6 +316,15 @@ class FirestoreService {
         .orderBy('startTime')
         .snapshots()
         .map((s) => s.docs.map(SlotModel.fromFirestore).toList());
+  }
+
+  Stream<List<SlotModel>> slotsForDoctor(String doctorId) {
+    return _slotsCol.where('doctorId', isEqualTo: doctorId).snapshots().map(
+        (s) => s.docs
+            .map(SlotModel.fromFirestore)
+            .where((slot) => slot.isActive)
+            .toList()
+          ..sort((a, b) => a.date.compareTo(b.date)));
   }
 
   Future<List<SlotModel>> getAllSlots({String? departmentId}) async {
@@ -384,8 +405,6 @@ class FirestoreService {
         .orderBy('timestamp', descending: true)
         .limit(200)
         .snapshots()
-        .map((s) => s.docs
-            .map((d) => {'id': d.id, ...d.data()})
-            .toList());
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
 }

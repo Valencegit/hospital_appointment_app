@@ -49,7 +49,8 @@ class AuthService {
 
       if (!userModel.isActive) {
         await signOut();
-        throw Exception('Your account has been deactivated. Please contact administrator.');
+        throw Exception(
+            'Your account has been deactivated. Please contact administrator.');
       }
 
       return userModel;
@@ -72,6 +73,12 @@ class AuthService {
     String? specialization,
     String? licenseNumber,
   }) async {
+    if (!role.isPatient) {
+      throw ArgumentError(
+        'Public registration is limited to patient accounts.',
+      );
+    }
+
     User? createdUser;
     try {
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(
@@ -101,33 +108,12 @@ class AuthService {
 
       await _firestoreService.createUser(userModel);
 
-      if (role.isPatient) {
-        await _firestoreService.createPatientProfile(
-          uid: user.uid,
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
-        );
-      } else if (role.isStaff) {
-        await _firestoreService.createStaffProfile(
-          uid: user.uid,
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
-          role: role,
-          departmentName: department ?? 'General Medicine',
-          specialization: specialization ?? (role.isDoctor ? 'General Practitioner' : 'Medical Staff'),
-          licenseNumber: licenseNumber ?? '',
-        );
-      } else if (role.isAdmin) {
-        await _firestoreService.createAdminProfile(
-          uid: user.uid,
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phoneNumber: phoneNumber.trim(),
-          department: department ?? 'Hospital Administration',
-        );
-      }
+      await _firestoreService.createPatientProfile(
+        uid: user.uid,
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
+      );
 
       return userModel;
     } on FirebaseAuthException catch (e) {

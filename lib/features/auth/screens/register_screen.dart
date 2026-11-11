@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/user_role.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/utils/ui_helpers.dart';
 import '../../../core/utils/validators.dart';
 import '../../../providers/auth_provider.dart';
@@ -32,15 +33,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _departmentCtrl = TextEditingController();
   final _licenseCtrl = TextEditingController();
 
-  // Default to Patient; Admin tab is hidden from public UI (created via
-  // the createAdminUser Cloud Function with a server-side secret)
-  UserRole _selectedRole = UserRole.patient;
+  final UserRole _selectedRole = UserRole.patient;
 
   @override
   void dispose() {
     for (final c in [
-      _fullNameCtrl, _emailCtrl, _phoneCtrl,
-      _passwordCtrl, _confirmCtrl, _departmentCtrl, _licenseCtrl,
+      _fullNameCtrl,
+      _emailCtrl,
+      _phoneCtrl,
+      _passwordCtrl,
+      _confirmCtrl,
+      _departmentCtrl,
+      _licenseCtrl,
     ]) {
       c.dispose();
     }
@@ -61,16 +65,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       department: _departmentCtrl.text.trim().isEmpty
           ? null
           : _departmentCtrl.text.trim(),
-      licenseNumber: _licenseCtrl.text.trim().isEmpty
-          ? null
-          : _licenseCtrl.text.trim(),
+      licenseNumber:
+          _licenseCtrl.text.trim().isEmpty ? null : _licenseCtrl.text.trim(),
     );
 
     if (!mounted) return;
     if (ok) {
       UiHelpers.showSuccessSnackBar(
           context, 'Account created! Welcome to ${AppConstants.appName}.');
-      context.go(_selectedRole.isStaff ? '/staff' : '/patient');
+      context.go(AppRouter.dashboardForRole(auth.currentRole));
     } else {
       UiHelpers.showErrorSnackBar(
           context, auth.errorMessage ?? AppConstants.errAuthFailed);
@@ -82,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final ok = await auth.signInWithGoogle();
     if (!mounted) return;
     if (ok) {
-      context.go(auth.currentRole.isStaff ? '/staff' : '/patient');
+      context.go(AppRouter.dashboardForRole(auth.currentRole));
     } else {
       UiHelpers.showErrorSnackBar(
           context, auth.errorMessage ?? AppConstants.errAuthFailed);
@@ -98,18 +101,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Stack(
         children: [
           const Positioned(
-            top: 0, left: 0, right: 0,
+            top: 0,
+            left: 0,
+            right: 0,
             child: MetroTopWave(height: 120),
           ),
           const Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: MetroBottomWave(height: 80),
           ),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 28, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Form(
@@ -185,12 +192,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 14),
                         ],
 
-                        // ── Role selector tabs ───────────────────────────
-                        _RoleTabs(
-                          selected: _selectedRole,
-                          onChanged: (r) => setState(() => _selectedRole = r),
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 20),
+                          child: Text(
+                            'New accounts are registered as patients. '
+                            'Hospital staff accounts are provisioned by an administrator.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 20),
 
                         // ── Full name ────────────────────────────────────
                         CustomTextField(
@@ -223,28 +236,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           validator: Validators.validatePhone,
                         ),
                         const SizedBox(height: 14),
-
-                        // ── Staff-only extra fields ──────────────────────
-                        if (_selectedRole.isStaff) ...[
-                          CustomTextField(
-                            controller: _departmentCtrl,
-                            label: 'Department',
-                            hintText: 'e.g. Cardiology, Pediatrics',
-                            prefixIcon: BootstrapIcons.building,
-                            validator: (v) =>
-                                Validators.validateRequired(v, 'Department'),
-                          ),
-                          const SizedBox(height: 14),
-                          CustomTextField(
-                            controller: _licenseCtrl,
-                            label: 'Medical License Number',
-                            hintText: 'e.g. LIC-2026-9921',
-                            prefixIcon: BootstrapIcons.shield_check,
-                            validator: (v) => Validators.validateRequired(
-                                v, 'License number'),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
 
                         // ── Password ─────────────────────────────────────
                         CustomTextField(
@@ -312,8 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const Text(
                               'Already have an account? ',
                               style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary),
+                                  fontSize: 13, color: AppColors.textSecondary),
                             ),
                             GestureDetector(
                               onTap: () => context.go('/login'),
@@ -342,85 +332,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ── Role tabs ──────────────────────────────────────────────────────────────
-
-class _RoleTabs extends StatelessWidget {
-  final UserRole selected;
-  final ValueChanged<UserRole> onChanged;
-
-  // Patient and Staff only — Admin accounts are created via Cloud Function
-  static const _tabs = [
-    (UserRole.patient, BootstrapIcons.person, 'Patient'),
-    (UserRole.staff, BootstrapIcons.person_badge, 'Staff'),
-    (UserRole.admin, BootstrapIcons.shield_lock, 'Admin'),
-  ];
-
-  const _RoleTabs({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        children: _tabs.map((tab) {
-          final (role, icon, label) = tab;
-          final isSelected = selected == role;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(role),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.all(4),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.25),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          )
-                        ]
-                      : null,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 16,
-                      color: isSelected
-                          ? Colors.white
-                          : AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
 class _ErrorBanner extends StatelessWidget {
@@ -438,7 +349,8 @@ class _ErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(BootstrapIcons.exclamation_circle, color: AppColors.error, size: 20),
+          const Icon(BootstrapIcons.exclamation_circle,
+              color: AppColors.error, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

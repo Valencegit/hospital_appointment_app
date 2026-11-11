@@ -9,6 +9,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../services/role_service.dart';
 
 enum AuthStatus {
   initial,
@@ -23,6 +24,7 @@ enum AuthStatus {
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
   final FirestoreService _firestoreService;
+  final RoleService? _roleService;
 
   AuthStatus _status = AuthStatus.initial;
   UserModel? _currentUser;
@@ -36,15 +38,18 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider({
     AuthService? authService,
     FirestoreService? firestoreService,
+    RoleService? roleService,
   })  : _authService = authService ?? AuthService(),
-        _firestoreService = firestoreService ?? FirestoreService() {
+        _firestoreService = firestoreService ?? FirestoreService(),
+        _roleService = roleService {
     _initAuthStateListener();
   }
 
   // Getters
   AuthStatus get status => _status;
   bool get isLoading => _status == AuthStatus.authenticating;
-  bool get isAuthenticated => _status == AuthStatus.authenticated && _currentUser != null;
+  bool get isAuthenticated =>
+      _status == AuthStatus.authenticated && _currentUser != null;
   bool get isInitial => _status == AuthStatus.initial;
 
   UserModel? get currentUser => _currentUser;
@@ -57,7 +62,8 @@ class AuthProvider extends ChangeNotifier {
   /// Initializes listening to the Firebase Auth state change stream.
   void _initAuthStateListener() {
     try {
-      _authStateSubscription = _authService.authStateChanges.listen((User? user) async {
+      _authStateSubscription =
+          _authService.authStateChanges.listen((User? user) async {
         if (user == null) {
           _currentUser = null;
           _patientProfile = null;
@@ -70,7 +76,8 @@ class AuthProvider extends ChangeNotifier {
         }
       }, onError: (e) {
         debugPrint('[AuthProvider] AuthState error: $e');
-        _status = AuthStatus.unauthenticated;
+        _status = AuthStatus.error;
+        _errorMessage = 'Unable to verify your account. Please sign in again.';
         notifyListeners();
       });
     } catch (e) {
@@ -84,42 +91,38 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadUserProfile(String uid) async {
     try {
       final user = await _firestoreService.getUser(uid);
-      if (user != null) {
-        _currentUser = user;
-        await _loadRoleProfile(user);
-        _status = AuthStatus.authenticated;
-      } else {
-        _currentUser = UserModel(
-          uid: uid,
-          email: _authService.currentUser?.email ?? '',
-          fullName: _authService.currentUser?.displayName ?? 'Hospital User',
-          role: UserRole.patient.toValue(),
-          createdAt: DateTime.now(),
-        );
-        _status = AuthStatus.authenticated;
+      if (user == null) {
+        throw StateError('Your hospital account profile could not be found.');
       }
+      await _loadRoleProfile(user);
+      _status = AuthStatus.authenticated;
       _errorMessage = null;
       // Initialize FCM and foreground notifications for this user
       NotificationService.instance.initialize(uid).ignore();
     } catch (e) {
       debugPrint('[AuthProvider] Error loading user profile: $e');
-      _status = AuthStatus.authenticated;
+      _currentUser = null;
+      _status = AuthStatus.error;
+      _errorMessage = e.toString().replaceFirst('Bad state: ', '');
     }
     notifyListeners();
   }
 
   /// Loads the detailed role profile based on the user's role.
   Future<void> _loadRoleProfile(UserModel user) async {
-    try {
-      if (user.isPatient) {
-        _patientProfile = await _firestoreService.getPatientProfile(user.uid);
-      } else if (user.isStaff) {
-        _staffProfile = await _firestoreService.getStaffProfile(user.uid);
-      } else if (user.isAdmin) {
-        _adminProfile = await _firestoreService.getAdminProfile(user.uid);
-      }
-    } catch (e) {
-      debugPrint('[AuthProvider] Failed to load role profile: $e');
+    final role = await (_roleService ?? RoleService()).currentRole();
+    final trustedUser = user.copyWith(role: role.toValue());
+    _currentUser = trustedUser;
+    _patientProfile = null;
+    _staffProfile = null;
+    _adminProfile = null;
+    if (trustedUser.isPatient) {
+      _patientProfile =
+          await _firestoreService.getPatientProfile(trustedUser.uid);
+    } else if (trustedUser.isStaff) {
+      _staffProfile = await _firestoreService.getStaffProfile(trustedUser.uid);
+    } else if (trustedUser.isAdmin) {
+      _adminProfile = await _firestoreService.getAdminProfile(trustedUser.uid);
     }
   }
 
@@ -137,15 +140,11 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
       );
-      _currentUser = user;
       await _loadRoleProfile(user);
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
     } catch (e) {
-      if (_tryDemoLogin(email, password)) {
-        return true;
-      }
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _status = AuthStatus.error;
       notifyListeners();
@@ -185,17 +184,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      if (e.toString().contains('apiKey') ||
-          e.toString().contains('network') ||
-          e.toString().contains('internal')) {
-        _setupLocalDemoUser(
-          fullName: fullName,
-          email: email,
-          phoneNumber: phoneNumber,
-          role: role,
-        );
-        return true;
-      }
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _status = AuthStatus.error;
       notifyListeners();
@@ -211,7 +199,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final user = await _authService.signInWithGoogle();
-      _currentUser = user;
       await _loadRoleProfile(user);
       _status = AuthStatus.authenticated;
       notifyListeners();
@@ -266,122 +253,6 @@ class AuthProvider extends ChangeNotifier {
 
   /// Clear any active error message.
   void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
-
-  /// Rapid test helper allowing quick evaluation of role-based dashboards.
-  void selectDemoRole(UserRole role) {
-    switch (role) {
-      case UserRole.patient:
-        _setupLocalDemoUser(
-          fullName: 'Sarah Jenkins',
-          email: 'patient@hospital.com',
-          phoneNumber: '+15551234567',
-          role: UserRole.patient,
-        );
-        break;
-      case UserRole.doctor:
-        _setupLocalDemoUser(
-          fullName: 'Dr. Daniel Mitchell, MD',
-          email: 'doctor.daniel@hospital.com',
-          phoneNumber: '+15552345678',
-          role: UserRole.doctor,
-        );
-        break;
-      case UserRole.staff:
-      case UserRole.receptionist:
-        _setupLocalDemoUser(
-          fullName: 'Claire Vance',
-          email: 'reception@hospital.com',
-          phoneNumber: '+15553456789',
-          role: UserRole.receptionist,
-        );
-        break;
-      case UserRole.admin:
-        _setupLocalDemoUser(
-          fullName: 'Administrator Karen Wood',
-          email: 'admin@hospital.com',
-          phoneNumber: '+15559876543',
-          role: UserRole.admin,
-        );
-        break;
-    }
-  }
-
-  bool _tryDemoLogin(String email, String password) {
-    final lower = email.toLowerCase().trim();
-    if (lower.contains('patient') && password.isNotEmpty) {
-      selectDemoRole(UserRole.patient);
-      return true;
-    } else if ((lower.contains('doctor') || lower.contains('staff')) && password.isNotEmpty) {
-      selectDemoRole(UserRole.doctor);
-      return true;
-    } else if (lower.contains('admin') && password.isNotEmpty) {
-      selectDemoRole(UserRole.admin);
-      return true;
-    }
-    return false;
-  }
-
-  void _setupLocalDemoUser({
-    required String fullName,
-    required String email,
-    required String phoneNumber,
-    required UserRole role,
-  }) {
-    final now = DateTime.now();
-    final uid = 'demo_${role.name}_${now.millisecondsSinceEpoch}';
-    _currentUser = UserModel(
-      uid: uid,
-      email: email,
-      fullName: fullName,
-      phoneNumber: phoneNumber,
-      role: role.toValue(),
-      createdAt: now,
-    );
-
-    if (role.isPatient) {
-      _patientProfile = PatientModel(
-        patientId: uid,
-        uid: uid,
-        fullName: fullName,
-        email: email,
-        phoneNumber: phoneNumber,
-        dateOfBirth: '1992-06-15',
-        gender: 'Female',
-        bloodGroup: 'O+',
-        emergencyContact: '+15559998877',
-        address: '742 Evergreen Terrace, Springfield',
-        createdAt: now,
-      );
-    } else if (role.isStaff) {
-      _staffProfile = StaffModel(
-        staffId: uid,
-        uid: uid,
-        fullName: fullName,
-        email: email,
-        phoneNumber: phoneNumber,
-        role: role,
-        departmentName: 'Cardiology',
-        specialization: role.isDoctor ? 'Cardiologist & Internal Medicine' : 'Clinical Reception',
-        licenseNumber: 'MED-2026-8841',
-        consultationFee: 75.0,
-        createdAt: now,
-      );
-    } else if (role.isAdmin) {
-      _adminProfile = AdminModel(
-        adminId: uid,
-        uid: uid,
-        fullName: fullName,
-        email: email,
-        phoneNumber: phoneNumber,
-        department: 'Operations & Clinical Quality',
-        createdAt: now,
-      );
-    }
-
-    _status = AuthStatus.authenticated;
     _errorMessage = null;
     notifyListeners();
   }
