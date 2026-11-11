@@ -4,7 +4,7 @@ import 'package:appointmentapp/core/utils/validators.dart';
 
 void main() {
   test('App metadata smoke test', () {
-    expect(AppConstants.appName, 'Metro Health Hospital');
+    expect(AppConstants.appName, 'MediCare Hospital');
     expect(AppConstants.appVersion, '1.0.0');
     expect(AppConstants.colUsers, 'users');
     expect(AppConstants.colPatients, 'patients');
