@@ -476,17 +476,6 @@ class _HospitalHeroHeader extends StatelessWidget {
             ),
           ),
 
-          // Hospital building illustration
-          Positioned(
-            left: 0,
-            right: 0,
-            top: topPad + 70,
-            bottom: 0,
-            child: CustomPaint(
-              painter: _HospitalBuildingPainter(),
-            ),
-          ),
-
           // Bottom wave cutout in white so card slides under it
           Positioned(
             left: 0,
@@ -499,115 +488,6 @@ class _HospitalHeroHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Painter that draws a simplified hospital building with glass windows
-/// against the sky background — matches the image in the mockup.
-class _HospitalBuildingPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Ground
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.86, w, h * 0.14),
-      Paint()..color = const Color(0xFFD0E8F5),
-    );
-
-    // Main building body
-    final bodyPaint = Paint()..color = const Color(0xFFE8F3FB);
-    final bodyOutline = Paint()
-      ..color = const Color(0xFFACC8DF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.05, h * 0.18, w * 0.90, h * 0.70),
-      const Radius.circular(6),
-    );
-    canvas.drawRRect(body, bodyPaint);
-    canvas.drawRRect(body, bodyOutline);
-
-    // Blue roof bar
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.05, h * 0.15, w * 0.90, h * 0.05),
-        const Radius.circular(4),
-      ),
-      Paint()..color = const Color(0xFF1266C5),
-    );
-
-    // "HOSPITAL" sign on roof
-    const textSpan = TextSpan(
-      text: '+ HOSPITAL',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        fontFamily: 'Poppins',
-        letterSpacing: 1,
-      ),
-    );
-    final tp = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-    tp.layout();
-    tp.paint(canvas, Offset(w * 0.50 - tp.width / 2, h * 0.16));
-
-    // Glass window grid
-    final glassPaint = Paint()..color = const Color(0xFF7DB8E8);
-    final frameStroke = Paint()
-      ..color = Colors.white.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    const cols = 8;
-    const rows = 3;
-    final winW = w * 0.80 / cols;
-    final winH = h * 0.36 / rows;
-
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final rect = Rect.fromLTWH(
-          w * 0.10 + c * winW + winW * 0.1,
-          h * 0.24 + r * (winH + h * 0.02),
-          winW * 0.80,
-          winH * 0.85,
-        );
-        canvas.drawRect(rect, glassPaint);
-        canvas.drawRect(rect, frameStroke);
-      }
-    }
-
-    // Entrance canopy
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * 0.38, h * 0.77, w * 0.24, h * 0.03),
-        const Radius.circular(2),
-      ),
-      Paint()..color = const Color(0xFF0D47A1),
-    );
-
-    // Glass door
-    canvas.drawRect(
-      Rect.fromLTWH(w * 0.42, h * 0.80, w * 0.16, h * 0.06),
-      Paint()..color = const Color(0xFF64B5E8),
-    );
-
-    // Trees
-    final trunkPaint = Paint()..color = const Color(0xFF795548);
-    final leafPaint = Paint()..color = const Color(0xFF2E7D32);
-    // Left
-    canvas.drawRect(
-        Rect.fromLTWH(w * 0.02, h * 0.76, w * 0.025, h * 0.10), trunkPaint);
-    canvas.drawCircle(Offset(w * 0.034, h * 0.74), w * 0.048, leafPaint);
-    // Right
-    canvas.drawRect(
-        Rect.fromLTWH(w * 0.955, h * 0.76, w * 0.025, h * 0.10), trunkPaint);
-    canvas.drawCircle(Offset(w * 0.968, h * 0.74), w * 0.048, leafPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 /// Paints a white wave at the bottom of the hero so the white card
