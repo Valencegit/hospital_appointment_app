@@ -11,15 +11,11 @@ class AppointmentService {
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   // ── Patient: book appointment ─────────────────────────────────────────────
-  /// Invokes the `bookAppointment` HTTPS callable Cloud Function.
+  /// Attempts to book via the `bookAppointment` Cloud Function (which uses a
+  /// server-side Firestore transaction for capacity safety).
   ///
-  /// The function runs a Firestore transaction server-side to:
-  ///   1. Verify the slot is still active and has capacity.
-  ///   2. Atomically create the appointment document.
-  ///   3. Increment `bookedCount` on the slot.
-  ///
-  /// Returns the new appointment document ID on success.
-  /// Throws a descriptive [Exception] on failure (slot full, not found, etc.).
+  /// Falls back to a direct Firestore transaction if the function is not yet
+  /// deployed (`functions/not-found`) so the app works before deployment.
   Future<String> bookAppointment({
     required String patientId,
     required String patientName,
@@ -30,38 +26,45 @@ class AppointmentService {
     required String appointmentTime,
     String? notes,
   }) async {
+    // ── Try Cloud Function first ──────────────────────────────────────────
     try {
       final callable = _functions.httpsCallable(
         'bookAppointment',
-        options: HttpsCallableOptions(
-          timeout: const Duration(seconds: 30),
-        ),
+        options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
       );
-
       final result = await callable.call<Map<String, dynamic>>({
         'patientId': patientId,
         'patientName': patientName,
         'slotId': slotId,
         'departmentId': departmentId,
         'departmentName': departmentName,
-        // ISO-8601 string — Cloud Function parses this into a JS Date
         'appointmentDate': appointmentDate.toIso8601String(),
         'appointmentTime': appointmentTime,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       });
-
       final data = result.data;
       if (data['success'] == true && data['appointmentId'] != null) {
         return data['appointmentId'] as String;
       }
       throw Exception('Booking failed: unexpected response from server.');
     } on FirebaseFunctionsException catch (e) {
-      // Map Cloud Function error codes to user-friendly messages
+      // Function not deployed → fall through to direct Firestore write.
+      if (e.code == 'not-found') {
+        return _bookDirectly(
+          patientId: patientId,
+          patientName: patientName,
+          slotId: slotId,
+          departmentId: departmentId,
+          departmentName: departmentName,
+          appointmentDate: appointmentDate,
+          appointmentTime: appointmentTime,
+          notes: notes,
+        );
+      }
+      // All other Cloud Function errors → surface to user.
       switch (e.code) {
         case 'failed-precondition':
           throw Exception(e.message ?? 'This slot is no longer available.');
-        case 'not-found':
-          throw Exception('The selected slot could not be found.');
         case 'unauthenticated':
           throw Exception('You must be signed in to book an appointment.');
         case 'permission-denied':
@@ -72,10 +75,83 @@ class AppointmentService {
           throw Exception(e.message ?? 'Booking failed. Please try again.');
       }
     } catch (e) {
-      // Re-throw typed exceptions unchanged; wrap everything else
       if (e is Exception) rethrow;
       throw Exception('An unexpected error occurred: $e');
     }
+  }
+
+  /// Direct Firestore transaction — used when Cloud Functions are not deployed.
+  /// Provides the same capacity-safe atomic booking as the Cloud Function.
+  Future<String> _bookDirectly({
+    required String patientId,
+    required String patientName,
+    required String slotId,
+    required String departmentId,
+    required String departmentName,
+    required DateTime appointmentDate,
+    required String appointmentTime,
+    String? notes,
+  }) async {
+    final slotRef =
+        _db.collection(AppConstants.slotsCollection).doc(slotId);
+    final appointmentRef =
+        _db.collection(AppConstants.appointmentsCollection).doc();
+    final appointmentId = appointmentRef.id;
+
+    await _db.runTransaction((tx) async {
+      final slotSnap = await tx.get(slotRef);
+      if (!slotSnap.exists) {
+        throw Exception('The selected slot could not be found.');
+      }
+      final slot = slotSnap.data()!;
+      final bookedCount = (slot['bookedCount'] as int?) ?? 0;
+      final capacity = (slot['capacity'] as int?) ?? 0;
+      final isActive = (slot['isActive'] as bool?) ?? false;
+
+      if (!isActive) {
+        throw Exception('This slot is no longer active.');
+      }
+      if (bookedCount >= capacity) {
+        throw Exception('This slot is fully booked. Please choose another time.');
+      }
+
+      tx.set(appointmentRef, {
+        'patientId': patientId,
+        'patientName': patientName,
+        'slotId': slotId,
+        'departmentId': departmentId,
+        'departmentName': departmentName,
+        'doctorId': slot['doctorId'],
+        'doctorName': slot['doctorName'],
+        'appointmentDate': Timestamp.fromDate(appointmentDate),
+        'appointmentTime': appointmentTime,
+        'status': AppConstants.statusPending,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        'bookedAt': FieldValue.serverTimestamp(),
+        'updatedAt': null,
+      });
+
+      tx.update(slotRef, {
+        'bookedCount': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    // Best-effort in-app notification
+    try {
+      await _db.collection(AppConstants.notificationsCollection).add({
+        'userId': patientId,
+        'title': 'Appointment Requested',
+        'body':
+            'Your $departmentName appointment is pending confirmation.',
+        'type': 'booking_confirmed',
+        'appointmentId': appointmentId,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+
+    return appointmentId;
   }
 
   // ── Patient: stream own appointments ──────────────────────────────────────

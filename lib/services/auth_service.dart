@@ -69,6 +69,8 @@ class AuthService {
     required String fullName,
     required String phoneNumber,
     required UserRole role,
+    DateTime? dateOfBirth,
+    String? gender,
     String? department,
     String? specialization,
     String? licenseNumber,
@@ -113,6 +115,8 @@ class AuthService {
         fullName: fullName.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
+        dateOfBirth: dateOfBirth,
+        gender: gender,
       );
 
       return userModel;

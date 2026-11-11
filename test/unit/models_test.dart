@@ -45,6 +45,8 @@ void main() {
         lastName: 'Scott',
         email: 'michael@dunder.com',
         phoneNumber: '+15559876543',
+        dateOfBirth: DateTime(1984, 3, 15),
+        gender: 'Male',
         bloodGroup: 'A+',
         emergencyContactName: 'Dwight Schrute',
         emergencyContactPhone: '+15551112222',
@@ -60,6 +62,8 @@ void main() {
       final deserialized = PatientModel.fromMap(map, documentId: 'patient_456');
       expect(deserialized.uid, 'patient_456');
       expect(deserialized.bloodGroup, 'A+');
+      expect(deserialized.dateOfBirth, DateTime(1984, 3, 15));
+      expect(deserialized.gender, 'Male');
     });
 
     test('StaffModel serialization and specialization attributes', () {
@@ -70,6 +74,7 @@ void main() {
         lastName: 'Mitchell',
         email: 'dr.daniel@hospital.com',
         phoneNumber: '+15553334444',
+        employeeId: 'HOSP-2026-19',
         staffRole: 'doctor',
         departmentName: 'Cardiology',
         specialization: 'Consultant Cardiologist',
@@ -82,11 +87,13 @@ void main() {
       expect(doctor.departmentName, 'Cardiology');
       expect(doctor.specialization, 'Consultant Cardiologist');
       expect(doctor.consultationFee, 120.0);
+      expect(doctor.employeeId, 'HOSP-2026-19');
 
       final map = doctor.toMap();
       final deserialized = StaffModel.fromMap(map, documentId: 'doc_789');
       expect(deserialized.licenseNumber, 'CARD-2026-99');
       expect(deserialized.consultationFee, 120.0);
+      expect(deserialized.employeeId, 'HOSP-2026-19');
     });
 
     test('AdminModel serialization and permissions verification', () {

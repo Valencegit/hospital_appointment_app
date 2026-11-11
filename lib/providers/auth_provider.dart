@@ -56,7 +56,7 @@ class AuthProvider extends ChangeNotifier {
   PatientModel? get patientProfile => _patientProfile;
   StaffModel? get staffProfile => _staffProfile;
   AdminModel? get adminProfile => _adminProfile;
-  UserRole get currentRole => _currentUser?.userRole ?? UserRole.patient;
+  UserRole get currentRole => _currentUser?.userRole ?? UserRole.pending;
   String? get errorMessage => _errorMessage;
 
   /// Initializes listening to the Firebase Auth state change stream.
@@ -92,9 +92,25 @@ class AuthProvider extends ChangeNotifier {
     try {
       final user = await _firestoreService.getUser(uid);
       if (user == null) {
-        throw StateError('Your hospital account profile could not be found.');
+        // No Firestore profile yet (can happen during first Google sign-in
+        // race condition). Build a minimal model from the Auth user.
+        final authUser = _authService.currentUser;
+        if (authUser == null) {
+          _status = AuthStatus.unauthenticated;
+          notifyListeners();
+          return;
+        }
+        final fallback = UserModel(
+          uid: uid,
+          email: authUser.email ?? '',
+          fullName: authUser.displayName ?? '',
+          role: 'patient',
+          createdAt: DateTime.now(),
+        );
+        await _loadRoleProfile(fallback);
+      } else {
+        await _loadRoleProfile(user);
       }
-      await _loadRoleProfile(user);
       _status = AuthStatus.authenticated;
       _errorMessage = null;
       // Initialize FCM and foreground notifications for this user
@@ -102,27 +118,43 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[AuthProvider] Error loading user profile: $e');
       _currentUser = null;
-      _status = AuthStatus.error;
+      _status = AuthStatus.unauthenticated;
       _errorMessage = e.toString().replaceFirst('Bad state: ', '');
     }
     notifyListeners();
   }
 
   /// Loads the detailed role profile based on the user's role.
+  /// Never throws — always produces a valid _currentUser.
   Future<void> _loadRoleProfile(UserModel user) async {
-    final role = await (_roleService ?? RoleService()).currentRole();
+    UserRole role;
+    try {
+      role = await (_roleService ?? RoleService()).currentRole();
+    } catch (e) {
+      debugPrint(
+          '[AuthProvider] Role resolution failed; treating as pending: $e');
+      role = UserRole.pending;
+    }
+
     final trustedUser = user.copyWith(role: role.toValue());
     _currentUser = trustedUser;
     _patientProfile = null;
     _staffProfile = null;
     _adminProfile = null;
-    if (trustedUser.isPatient) {
-      _patientProfile =
-          await _firestoreService.getPatientProfile(trustedUser.uid);
-    } else if (trustedUser.isStaff) {
-      _staffProfile = await _firestoreService.getStaffProfile(trustedUser.uid);
-    } else if (trustedUser.isAdmin) {
-      _adminProfile = await _firestoreService.getAdminProfile(trustedUser.uid);
+
+    try {
+      if (trustedUser.isPatient) {
+        _patientProfile =
+            await _firestoreService.getPatientProfile(trustedUser.uid);
+      } else if (trustedUser.isStaff) {
+        _staffProfile =
+            await _firestoreService.getStaffProfile(trustedUser.uid);
+      } else if (trustedUser.isAdmin) {
+        _adminProfile =
+            await _firestoreService.getAdminProfile(trustedUser.uid);
+      }
+    } catch (e) {
+      debugPrint('[AuthProvider] Role profile load failed (non-fatal): $e');
     }
   }
 
@@ -144,9 +176,14 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
-    } catch (e) {
+    } on Exception catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      _status = AuthStatus.error;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     }
@@ -159,6 +196,8 @@ class AuthProvider extends ChangeNotifier {
     required String fullName,
     required String phoneNumber,
     required UserRole role,
+    DateTime? dateOfBirth,
+    String? gender,
     String? department,
     String? specialization,
     String? licenseNumber,
@@ -174,6 +213,8 @@ class AuthProvider extends ChangeNotifier {
         fullName: fullName,
         phoneNumber: phoneNumber,
         role: role,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
         department: department,
         specialization: specialization,
         licenseNumber: licenseNumber,
@@ -183,16 +224,21 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
-    } catch (e) {
+    } on Exception catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      _status = AuthStatus.error;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     }
   }
 
   /// Sign in or register with Google (google_sign_in v6).
-  /// Cancellation is treated as a silent no-op (returns false, no error shown).
+  /// Cancellation is a silent no-op (returns false, no error message shown).
   Future<bool> signInWithGoogle() async {
     _status = AuthStatus.authenticating;
     _errorMessage = null;
@@ -205,15 +251,15 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       final msg = e.toString();
-      // Cancellation is not an error — silently reset to unauthenticated
       if (msg.contains('cancel') || msg.contains('cancelled')) {
         _status = AuthStatus.unauthenticated;
         _errorMessage = null;
         notifyListeners();
         return false;
       }
-      _errorMessage = msg.replaceFirst('Exception: ', '');
-      _status = AuthStatus.error;
+      _errorMessage =
+          msg.replaceFirst('Exception: ', '').replaceFirst('Bad state: ', '');
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     }

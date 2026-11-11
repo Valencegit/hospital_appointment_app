@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/routing/app_router.dart';
@@ -30,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _biometricEnabled = false;
+  bool _rememberMe = false;
   final _biometricService = BiometricService();
 
   // Design tokens matching the mockup
@@ -41,6 +43,24 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadBiometricState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _rememberMe =
+            preferences.getBool(AppConstants.prefKeyRememberMe) ?? false;
+        if (_rememberMe) {
+          _emailCtrl.text =
+              preferences.getString(AppConstants.prefKeySavedEmail) ?? '';
+        }
+      });
+    } catch (error) {
+      debugPrint('[LoginScreen] Could not load remembered email: $error');
+    }
   }
 
   Future<void> _loadBiometricState() async {
@@ -66,11 +86,29 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (ok) {
+      await _saveRememberedEmail();
       await _offerBiometricEnable();
       _routeByRole(auth.currentRole);
     } else {
       UiHelpers.showErrorSnackBar(
           context, auth.errorMessage ?? AppConstants.errAuthFailed);
+    }
+  }
+
+  Future<void> _saveRememberedEmail() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(AppConstants.prefKeyRememberMe, _rememberMe);
+      if (_rememberMe) {
+        await preferences.setString(
+          AppConstants.prefKeySavedEmail,
+          _emailCtrl.text.trim(),
+        );
+      } else {
+        await preferences.remove(AppConstants.prefKeySavedEmail);
+      }
+    } catch (error) {
+      debugPrint('[LoginScreen] Could not save remembered email: $error');
     }
   }
 
@@ -249,21 +287,48 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        // Forgot password (right-aligned)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () => context.push('/forgot-password'),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _primary,
+                        Row(
+                          children: [
+                            SizedBox(
+                              height: 40,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _rememberMe,
+                                    onChanged: auth.isLoading
+                                        ? null
+                                        : (value) => setState(
+                                              () =>
+                                                  _rememberMe = value ?? false,
+                                            ),
+                                    activeColor: _primary,
+                                  ),
+                                  const Text(
+                                    'Remember Me',
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 12,
+                                      color: _darkNavy,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () => context.push('/forgot-password'),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: _primary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 20),
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../models/user_model.dart';
@@ -39,7 +40,16 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Manage Users')),
+      appBar: AppBar(
+        title: const Text('Manage Users'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.push('/admin/users/create-staff'),
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            label: const Text('Add staff'),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // ── Search Bar ────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ class StaffModel {
   final String lastName;
   final String email;
   final String phoneNumber;
+  final String employeeId;
   final String staffRole;
   final String? departmentId;
   final String departmentName;
@@ -26,6 +27,7 @@ class StaffModel {
     required this.lastName,
     required this.email,
     required this.phoneNumber,
+    required this.employeeId,
     required this.staffRole,
     this.departmentId,
     required this.departmentName,
@@ -47,6 +49,7 @@ class StaffModel {
     String lastName = '',
     required String email,
     required String phoneNumber,
+    String employeeId = '',
     dynamic role,
     String staffRole = 'staff',
     String? departmentId,
@@ -54,7 +57,13 @@ class StaffModel {
     String specialization = 'General Physician',
     String licenseNumber = '',
     double consultationFee = 0.0,
-    List<String> availableDays = const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    List<String> availableDays = const [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday'
+    ],
     bool isAvailable = true,
     bool isActive = true,
     required DateTime createdAt,
@@ -62,7 +71,10 @@ class StaffModel {
   }) {
     String first = firstName;
     String last = lastName;
-    if (fullName != null && fullName.isNotEmpty && first.isEmpty && last.isEmpty) {
+    if (fullName != null &&
+        fullName.isNotEmpty &&
+        first.isEmpty &&
+        last.isEmpty) {
       final parts = fullName.trim().split(' ');
       first = parts.first;
       last = parts.length > 1 ? parts.sublist(1).join(' ') : '';
@@ -81,6 +93,7 @@ class StaffModel {
       lastName: last,
       email: email,
       phoneNumber: phoneNumber,
+      employeeId: employeeId,
       staffRole: sRole,
       departmentId: departmentId,
       departmentName: departmentName,
@@ -111,9 +124,12 @@ class StaffModel {
       return DateTime.now();
     }
 
-    final fullName = map['full_name'] as String? ?? (map['fullName'] as String? ?? '');
-    String first = map['firstName'] as String? ?? (map['first_name'] as String? ?? '');
-    String last = map['lastName'] as String? ?? (map['last_name'] as String? ?? '');
+    final fullName =
+        map['full_name'] as String? ?? (map['fullName'] as String? ?? '');
+    String first =
+        map['firstName'] as String? ?? (map['first_name'] as String? ?? '');
+    String last =
+        map['lastName'] as String? ?? (map['last_name'] as String? ?? '');
     if (first.isEmpty && last.isEmpty && fullName.isNotEmpty) {
       final parts = fullName.split(' ');
       first = parts.first;
@@ -121,22 +137,37 @@ class StaffModel {
     }
 
     return StaffModel(
-      uid: documentId ?? (map['uid'] as String? ?? (map['staff_id'] as String? ?? '')),
+      uid: documentId ??
+          (map['uid'] as String? ?? (map['staff_id'] as String? ?? '')),
       firstName: first,
       lastName: last,
       email: map['email'] as String? ?? '',
-      phoneNumber: map['phone_number'] as String? ?? (map['phoneNumber'] as String? ?? ''),
-      staffRole: map['staffRole'] as String? ?? (map['role'] as String? ?? 'staff'),
-      departmentId: map['departmentId'] as String? ?? map['department_id'] as String?,
+      phoneNumber: map['phone_number'] as String? ??
+          (map['phoneNumber'] as String? ?? ''),
+      employeeId: map['employeeId'] as String? ??
+          map['staffId'] as String? ??
+          map['staff_id'] as String? ??
+          '',
+      staffRole:
+          map['staffRole'] as String? ?? (map['role'] as String? ?? 'staff'),
+      departmentId:
+          map['departmentId'] as String? ?? map['department_id'] as String?,
       departmentName: map['departmentName'] as String? ??
           (map['department_name'] as String? ?? 'General Medicine'),
       specialization: map['specialization'] as String? ?? 'General Physician',
-      licenseNumber: map['licenseNumber'] as String? ?? (map['license_number'] as String? ?? ''),
-      consultationFee: (map['consultationFee'] as num? ?? map['consultation_fee'] as num? ?? 0.0).toDouble(),
-      availableDays: (map['availableDays'] as List<dynamic>? ?? map['available_days'] as List<dynamic>? ?? [])
+      licenseNumber: map['licenseNumber'] as String? ??
+          (map['license_number'] as String? ?? ''),
+      consultationFee: (map['consultationFee'] as num? ??
+              map['consultation_fee'] as num? ??
+              0.0)
+          .toDouble(),
+      availableDays: (map['availableDays'] as List<dynamic>? ??
+              map['available_days'] as List<dynamic>? ??
+              [])
           .map((e) => e.toString())
           .toList(),
-      isAvailable: map['isAvailable'] as bool? ?? (map['is_available'] as bool? ?? true),
+      isAvailable:
+          map['isAvailable'] as bool? ?? (map['is_available'] as bool? ?? true),
       isActive: map['isActive'] as bool? ?? (map['is_active'] as bool? ?? true),
       createdAt: parseDateTime(map['createdAt'] ?? map['created_at']),
       updatedAt: map['updatedAt'] != null || map['updated_at'] != null
@@ -158,6 +189,9 @@ class StaffModel {
         'email': email,
         'phoneNumber': phoneNumber,
         'phone_number': phoneNumber,
+        if (employeeId.isNotEmpty) 'employeeId': employeeId,
+        if (employeeId.isNotEmpty) 'staffId': employeeId,
+        if (employeeId.isNotEmpty) 'staff_id': employeeId,
         'staffRole': staffRole,
         'role': staffRole,
         if (departmentId != null) 'departmentId': departmentId,
@@ -183,6 +217,7 @@ class StaffModel {
     String? lastName,
     String? email,
     String? phoneNumber,
+    String? employeeId,
     String? staffRole,
     String? departmentId,
     String? departmentName,
@@ -200,6 +235,7 @@ class StaffModel {
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      employeeId: employeeId ?? this.employeeId,
       staffRole: staffRole ?? this.staffRole,
       departmentId: departmentId ?? this.departmentId,
       departmentName: departmentName ?? this.departmentName,

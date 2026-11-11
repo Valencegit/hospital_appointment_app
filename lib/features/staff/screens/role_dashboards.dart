@@ -115,19 +115,6 @@ class _ReceptionistDashboardScreenState
                     color: AppColors.secondary,
                     onTap: () => context.push('/staff/patients'),
                   ),
-                  _QuickAction(
-                    label: 'Book\nAppointment',
-                    icon: Icons.add_circle_outline_rounded,
-                    color: AppColors.success,
-                    onTap: () => context
-                        .push('/patient/book', extra: <String, dynamic>{}),
-                  ),
-                  _QuickAction(
-                    label: 'Departments',
-                    icon: Icons.local_hospital_outlined,
-                    color: AppColors.roleReceptionist,
-                    onTap: () => context.push('/patient/departments'),
-                  ),
                 ]),
 
                 const SizedBox(height: 22),

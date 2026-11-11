@@ -8,7 +8,8 @@ import 'package:appointmentapp/shared/widgets/role_badge.dart';
 
 void main() {
   group('Shared Widgets Tests', () {
-    testWidgets('CustomButton renders text and triggers callback', (tester) async {
+    testWidgets('CustomButton renders text and triggers callback',
+        (tester) async {
       bool tapped = false;
 
       await tester.pumpWidget(
@@ -28,7 +29,8 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('CustomButton shows loading indicator when isLoading is true', (tester) async {
+    testWidgets('CustomButton shows loading indicator when isLoading is true',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -45,7 +47,9 @@ void main() {
       expect(find.text('Save'), findsNothing);
     });
 
-    testWidgets('RoleBadge displays appropriate title and icon for patient and doctor', (tester) async {
+    testWidgets(
+        'RoleBadge displays appropriate title and icon for patient and doctor',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -60,7 +64,7 @@ void main() {
       );
 
       expect(find.text('Patient'), findsOneWidget);
-      expect(find.text('Doctor / Specialist'), findsOneWidget);
+      expect(find.text('Doctor'), findsOneWidget);
     });
 
     testWidgets('CustomTextField renders label and hintText', (tester) async {

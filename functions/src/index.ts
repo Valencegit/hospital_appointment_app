@@ -162,51 +162,123 @@ export const createAdminUser = onCall(
 
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
-
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: fullName,
-      ...(phoneNumber ? { phoneNumber } : {}),
+    const bootstrapRef = db.collection("system_settings").doc("admin_bootstrap");
+    await db.runTransaction(async (transaction) => {
+      const bootstrap = await transaction.get(bootstrapRef);
+      if (bootstrap.exists) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Initial administrator setup is already complete or in progress."
+        );
+      }
+      transaction.create(bootstrapRef, {
+        email: email.trim().toLowerCase(),
+        startedAt: now,
+      });
     });
 
-    await admin.auth().setCustomUserClaims(userRecord.uid, { role: "admin" });
+    let hasExistingAdmin: boolean;
+    try {
+      const existingAdmins = await db
+        .collection("users")
+        .where("role", "==", "admin")
+        .where("is_active", "==", true)
+        .limit(1)
+        .get();
+      hasExistingAdmin = !existingAdmins.empty;
+    } catch (error) {
+      try {
+        await bootstrapRef.delete();
+      } catch (cleanupError) {
+        console.error("Could not release initial-admin setup lock:", cleanupError);
+      }
+      throw error;
+    }
+    if (hasExistingAdmin) {
+      await bootstrapRef.delete();
+      throw new HttpsError(
+        "failed-precondition",
+        "Initial administrator setup is already complete."
+      );
+    }
 
-    await db.collection("users").doc(userRecord.uid).set({
-      uid: userRecord.uid,
-      email,
-      full_name: fullName,
-      phone_number: phoneNumber ?? "",
-      role: "admin",
-      is_active: true,
-      created_at: now,
-      updated_at: null,
-    });
-
-    await db.collection("admins").doc(userRecord.uid).set({
-      uid: userRecord.uid,
-      full_name: fullName,
-      email,
-      phone_number: phoneNumber ?? "",
-      department: "Hospital Administration",
-      permissions: [
-        "manage_users",
-        "manage_staff",
-        "manage_departments",
-        "manage_slots",
-        "view_analytics",
-        "system_configuration",
-      ],
-      created_at: now,
-      updated_at: null,
-    });
-
-    await db.collection("audit_logs").add({
-      actorUid: "system",
-      action: "admin_account_created",
-      recordRef: userRecord.uid,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    let userRecord: admin.auth.UserRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: fullName,
+        ...(phoneNumber ? { phoneNumber } : {}),
+      });
+    } catch (error) {
+      try {
+        await bootstrapRef.delete();
+      } catch (cleanupError) {
+        console.error("Could not release initial-admin setup lock:", cleanupError);
+      }
+      throw error;
+    }
+    const userRef = db.collection("users").doc(userRecord.uid);
+    const adminRef = db.collection("admins").doc(userRecord.uid);
+    const auditRef = db.collection("audit_logs").doc();
+    try {
+      const batch = db.batch();
+      batch.set(userRef, {
+        uid: userRecord.uid,
+        email,
+        full_name: fullName,
+        phone_number: phoneNumber ?? "",
+        role: "admin",
+        is_active: true,
+        created_at: now,
+        updated_at: null,
+      });
+      batch.set(adminRef, {
+        uid: userRecord.uid,
+        full_name: fullName,
+        email,
+        phone_number: phoneNumber ?? "",
+        department: "Hospital Administration",
+        permissions: [
+          "manage_users",
+          "manage_staff",
+          "manage_departments",
+          "manage_slots",
+          "view_analytics",
+          "system_configuration",
+        ],
+        created_at: now,
+        updated_at: null,
+      });
+      batch.set(auditRef, {
+        actorUid: "system",
+        action: "admin_account_created",
+        recordRef: userRecord.uid,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      await admin.auth().setCustomUserClaims(userRecord.uid, { role: "admin" });
+    } catch (error) {
+      try {
+        const rollback = db.batch();
+        rollback.delete(userRef);
+        rollback.delete(adminRef);
+        rollback.delete(auditRef);
+        rollback.delete(bootstrapRef);
+        await rollback.commit();
+        await admin.auth().deleteUser(userRecord.uid);
+      } catch (rollbackError) {
+        console.error(
+          `Could not roll back incomplete initial admin ${userRecord.uid}:`,
+          rollbackError
+        );
+      }
+      console.error("Could not provision initial admin:", error);
+      throw new HttpsError(
+        "internal",
+        "Initial administrator setup failed. Contact Firebase support if the account still exists."
+      );
+    }
 
     return {
       success: true,
@@ -229,6 +301,29 @@ type AssignedRole = (typeof assignedRoles)[number];
 interface AssignRoleRequest {
   uid: string;
   role: AssignedRole;
+}
+
+async function requireActiveAdmin(
+  request: CallableRequest<unknown>
+): Promise<string> {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Sign in to continue.");
+  }
+  if (auth.token.role !== "admin") {
+    throw new HttpsError("permission-denied", "Administrator access required.");
+  }
+
+  const adminDoc = await admin.firestore().collection("users").doc(auth.uid).get();
+  const adminData = adminDoc.data();
+  if (
+    !adminDoc.exists ||
+    adminData?.role !== "admin" ||
+    adminData?.is_active === false
+  ) {
+    throw new HttpsError("permission-denied", "An active administrator is required.");
+  }
+  return auth.uid;
 }
 
 export const ensurePatientRole = onCall(
@@ -264,12 +359,7 @@ export const ensurePatientRole = onCall(
 export const assignUserRole = onCall(
   { enforceAppCheck: false },
   async (request: CallableRequest<AssignRoleRequest>) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Sign in to continue.");
-    }
-    if (request.auth.token.role !== "admin") {
-      throw new HttpsError("permission-denied", "Administrator access required.");
-    }
+    const adminUid = await requireActiveAdmin(request);
 
     const { uid, role } = request.data;
     if (
@@ -280,7 +370,7 @@ export const assignUserRole = onCall(
     ) {
       throw new HttpsError("invalid-argument", "A valid user and role are required.");
     }
-    if (uid === request.auth.uid) {
+    if (uid === adminUid) {
       throw new HttpsError(
         "failed-precondition",
         "Administrators cannot change their own role."
@@ -310,6 +400,25 @@ export const assignUserRole = onCall(
       throw new HttpsError("not-found", "Hospital user profile not found.");
     }
     const existingRole = userDoc.data()?.role;
+    const staffRef = db.collection("staff").doc(uid);
+    if (
+      role === "doctor" ||
+      role === "receptionist" ||
+      role === "scheduling_officer"
+    ) {
+      const staffDoc = await staffRef.get();
+      const staffData = staffDoc.data();
+      const employeeId =
+        staffData?.employeeId ?? staffData?.staffId ?? staffData?.staff_id;
+      const departmentId =
+        staffData?.departmentId ?? staffData?.department_id;
+      if (!staffDoc.exists || !employeeId || !departmentId) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Create the staff account with its staff ID and department before assigning this role."
+        );
+      }
+    }
     if (
       existingRole === "admin" &&
       role !== "admin" &&
@@ -329,18 +438,21 @@ export const assignUserRole = onCall(
       role,
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
     });
-    const staffRef = db.collection("staff").doc(uid);
-    if (role === "doctor" || role === "receptionist" || role === "scheduling_officer") {
-      batch.set(
-        staffRef,
-        { uid, staffRole: role, role, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
-        { merge: true }
-      );
+    if (
+      role === "doctor" ||
+      role === "receptionist" ||
+      role === "scheduling_officer"
+    ) {
+      batch.update(staffRef, {
+        staffRole: role,
+        role,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     } else if (role === "patient" || role === "admin") {
       batch.delete(staffRef);
     }
     batch.set(db.collection("audit_logs").doc(), {
-      actorUid: request.auth.uid,
+      actorUid: adminUid,
       action: "user_role_changed",
       targetId: uid,
       role,
@@ -356,6 +468,191 @@ export const assignUserRole = onCall(
   }
 );
 
+interface CreateStaffUserRequest {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  employeeId: string;
+  departmentId: string;
+  role: "receptionist" | "doctor" | "scheduling_officer";
+  specialization?: string;
+}
+
+export const createStaffUser = onCall(
+  { enforceAppCheck: false },
+  async (request: CallableRequest<CreateStaffUserRequest>) => {
+    const adminUid = await requireActiveAdmin(request);
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      employeeId,
+      departmentId,
+      role,
+      specialization,
+    } = request.data;
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const normalizedName = typeof fullName === "string" ? fullName.trim() : "";
+    const normalizedPhone = typeof phoneNumber === "string" ? phoneNumber.trim() : "";
+    const normalizedEmployeeId =
+      typeof employeeId === "string" ? employeeId.trim() : "";
+
+    if (
+      !normalizedName ||
+      !normalizedEmail ||
+      !normalizedPhone ||
+      !normalizedEmployeeId ||
+      typeof departmentId !== "string" ||
+      !departmentId.trim() ||
+      !["receptionist", "doctor", "scheduling_officer"].includes(role)
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Name, email, phone, staff ID, department, and a valid staff role are required."
+      );
+    }
+    if (
+      role === "doctor" &&
+      (typeof specialization !== "string" || !specialization.trim())
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "A specialization is required for doctor accounts."
+      );
+    }
+
+    const db = admin.firestore();
+    const departmentDoc = await db
+      .collection("departments")
+      .doc(departmentId.trim())
+      .get();
+    const department = departmentDoc.data();
+    const departmentIsActive =
+      department?.isActive ?? department?.active_status ?? true;
+    if (!departmentDoc.exists || departmentIsActive !== true) {
+      throw new HttpsError("failed-precondition", "Select an active department.");
+    }
+    const departmentName =
+      typeof department?.name === "string" ? department.name : "";
+    if (!departmentName) {
+      throw new HttpsError("failed-precondition", "The department has no name.");
+    }
+
+    const duplicateEmployeeId = await db
+      .collection("staff")
+      .where("employeeId", "==", normalizedEmployeeId)
+      .limit(1)
+      .get();
+    if (!duplicateEmployeeId.empty) {
+      throw new HttpsError("already-exists", "That staff ID is already in use.");
+    }
+
+    const auth = admin.auth();
+    let createdUser: admin.auth.UserRecord;
+    try {
+      createdUser = await auth.createUser({
+        email: normalizedEmail,
+        displayName: normalizedName,
+        emailVerified: false,
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "auth/email-already-exists"
+      ) {
+        throw new HttpsError("already-exists", "An account already uses this email.");
+      }
+      throw error;
+    }
+
+    const now = admin.firestore.Timestamp.now();
+    const nameParts = normalizedName.split(/\s+/);
+    const userRef = db.collection("users").doc(createdUser.uid);
+    const staffRef = db.collection("staff").doc(createdUser.uid);
+    const auditRef = db.collection("audit_logs").doc();
+
+    try {
+      const batch = db.batch();
+      batch.set(userRef, {
+        uid: createdUser.uid,
+        email: normalizedEmail,
+        full_name: normalizedName,
+        phone_number: normalizedPhone,
+        role,
+        staff_id: normalizedEmployeeId,
+        department_id: departmentId.trim(),
+        department_name: departmentName,
+        is_active: true,
+        created_at: now,
+        updated_at: null,
+      });
+      batch.set(staffRef, {
+        uid: createdUser.uid,
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(" "),
+        full_name: normalizedName,
+        email: normalizedEmail,
+        phoneNumber: normalizedPhone,
+        phone_number: normalizedPhone,
+        staffRole: role,
+        role,
+        employeeId: normalizedEmployeeId,
+        staffId: normalizedEmployeeId,
+        departmentId: departmentId.trim(),
+        department_id: departmentId.trim(),
+        departmentName,
+        department_name: departmentName,
+        specialization: role === "doctor" ? specialization!.trim() : "",
+        licenseNumber: "",
+        license_number: "",
+        consultationFee: 0,
+        consultation_fee: 0,
+        availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        isAvailable: true,
+        is_available: true,
+        isActive: true,
+        is_active: true,
+        createdAt: now,
+        created_at: now,
+        updatedAt: null,
+        updated_at: null,
+      });
+      batch.set(auditRef, {
+        actorUid: adminUid,
+        action: "staff_account_created",
+        targetId: createdUser.uid,
+        role,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      await auth.setCustomUserClaims(createdUser.uid, { role });
+    } catch (error) {
+      try {
+        const rollback = db.batch();
+        rollback.delete(userRef);
+        rollback.delete(staffRef);
+        rollback.delete(auditRef);
+        await rollback.commit();
+        await auth.deleteUser(createdUser.uid);
+      } catch (rollbackError) {
+        console.error(
+          `Could not roll back incomplete staff account ${createdUser.uid}:`,
+          rollbackError
+        );
+      }
+      console.error("Could not provision staff account:", error);
+      throw new HttpsError(
+        "internal",
+        "Staff account setup failed. Contact an administrator if the account still appears."
+      );
+    }
+
+    return { success: true, uid: createdUser.uid, email: normalizedEmail, role };
+  }
+);
+
 interface AccountStatusRequest {
   uid: string;
   active: boolean;
@@ -364,17 +661,12 @@ interface AccountStatusRequest {
 export const setUserAccountStatus = onCall(
   { enforceAppCheck: false },
   async (request: CallableRequest<AccountStatusRequest>) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Sign in to continue.");
-    }
-    if (request.auth.token.role !== "admin") {
-      throw new HttpsError("permission-denied", "Administrator access required.");
-    }
+    const adminUid = await requireActiveAdmin(request);
     const { uid, active } = request.data;
     if (typeof uid !== "string" || uid.length === 0 || typeof active !== "boolean") {
       throw new HttpsError("invalid-argument", "A user and account status are required.");
     }
-    if (uid === request.auth.uid && !active) {
+    if (uid === adminUid && !active) {
       throw new HttpsError(
         "failed-precondition",
         "Administrators cannot deactivate their own account."
@@ -406,7 +698,7 @@ export const setUserAccountStatus = onCall(
     });
     await admin.auth().updateUser(uid, { disabled: !active });
     await db.collection("audit_logs").add({
-      actorUid: request.auth.uid,
+      actorUid: adminUid,
       action: active ? "user_activated" : "user_deactivated",
       targetId: uid,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),

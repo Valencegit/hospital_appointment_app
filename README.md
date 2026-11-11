@@ -8,7 +8,7 @@ A Flutter mobile application for hospital appointment booking and patient manage
 
 ## Overview
 
-This app provides role-based access for **patients**, **staff**, and **administrators** to manage hospital appointments, patient records, and scheduling.
+This app provides role-based access for patients, receptionists, doctors, scheduling officers, and administrators to manage hospital appointments, patient records, and scheduling.
 
 ---
 
@@ -81,6 +81,10 @@ firebase deploy --only firestore
 
 ### 5. Deploy Cloud Functions
 
+Before deploying, create `functions/.env.<project-id>` with a high-entropy
+`ADMIN_SETUP_SECRET` value. This file is ignored by Git and must never be
+committed. The secret is only for the initial administrator bootstrap.
+
 ```bash
 cd functions
 npm install
@@ -111,11 +115,25 @@ flutter run
 
 | Role | Access |
 |---|---|
-| `patient` | Register/login, view departments, book appointments, view own history, request cancellation |
-| `staff` | View/manage appointments, manage slots, view patient records |
-| `admin` | All above + manage users, departments, view reports & audit logs |
+| `patient` | Register, view departments, book appointments, view own history, and request cancellation |
+| `receptionist` | Manage the appointment queue and access patient records |
+| `doctor` | View assigned appointments and update visit outcomes |
+| `scheduling_officer` | Create and manage appointment slots |
+| `admin` | Manage users and roles, departments, appointments, reports, and audit logs |
+| `pending` | Signed-in account awaiting trusted role provisioning |
 
-Staff and admin accounts are created manually via Firebase Authentication + Firestore (set `role` field in `users/{uid}`).
+New public registrations are patients only. Role access is granted by Firebase
+Auth custom claims set through Cloud Functions; changing a Firestore `role`
+field alone does not grant access. Use the `createAdminUser` callable once from
+a trusted setup client with the configured secret to create the initial
+administrator; the bootstrap callable locks after an administrator is created.
+The admin user-management screen can create receptionist, doctor, and
+scheduling-officer accounts with a staff ID and department, and send a password
+setup email. It can also assign roles to existing accounts and manage account
+status. Existing staff/admin users need claims provisioned through a trusted
+migration before they can use staff features. Never put `ADMIN_SETUP_SECRET`
+in the Flutter app. Remove or rotate it after initial setup and redeploy the
+Functions.
 
 ---
 

@@ -72,6 +72,7 @@ void main() {
     });
 
     test('AppConstants values are correct', () {
+      expect(AppConstants.appName, 'MediCare Hospital');
       expect(AppConstants.statusPending, 'pending');
       expect(AppConstants.statusConfirmed, 'confirmed');
       expect(AppConstants.statusCancelled, 'cancelled');

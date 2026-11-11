@@ -89,6 +89,7 @@ void main() {
       expect(routes, contains('/staff/patients'));
       expect(routes, contains('/admin'));
       expect(routes, contains('/admin/users'));
+      expect(routes, contains('/admin/users/create-staff'));
       expect(routes, contains('/admin/departments'));
       expect(routes, contains('/admin/reports'));
       expect(routes, contains('/admin/audit'));

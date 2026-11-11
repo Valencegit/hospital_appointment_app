@@ -4,7 +4,7 @@ class AppConstants {
   AppConstants._();
 
   // App Metadata
-  static const String appName = 'Metro Health Hospital';
+  static const String appName = 'MediCare Hospital';
   static const String appTagline = 'Your Health, Our Priority';
   static const String appVersion = '1.0.0';
 

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/routing/app_router.dart';
@@ -12,9 +10,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/metro_decorations.dart';
 import '../widgets/social_sign_in_button.dart';
-import 'package:bootstrap_icons/bootstrap_icons.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,31 +20,41 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  static const _navy = Color(0xFF183B5B);
+  static const _primary = Color(0xFF1266C5);
+  static const _background = Color(0xFFF1F6FC);
+
   final _formKey = GlobalKey<FormState>();
   final _fullNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  final _departmentCtrl = TextEditingController();
-  final _licenseCtrl = TextEditingController();
-
-  final UserRole _selectedRole = UserRole.patient;
+  DateTime? _dateOfBirth;
+  String? _gender;
 
   @override
   void dispose() {
-    for (final c in [
-      _fullNameCtrl,
-      _emailCtrl,
-      _phoneCtrl,
-      _passwordCtrl,
-      _confirmCtrl,
-      _departmentCtrl,
-      _licenseCtrl,
-    ]) {
-      c.dispose();
-    }
+    _fullNameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDateOfBirth() async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(today.year - 18, today.month, today.day),
+      firstDate: DateTime(1900),
+      lastDate: today,
+      helpText: 'Select date of birth',
+    );
+    if (picked != null && mounted) {
+      setState(() => _dateOfBirth = picked);
+    }
   }
 
   Future<void> _handleRegister() async {
@@ -61,22 +67,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordCtrl.text,
       fullName: _fullNameCtrl.text.trim(),
       phoneNumber: _phoneCtrl.text.trim(),
-      role: _selectedRole,
-      department: _departmentCtrl.text.trim().isEmpty
-          ? null
-          : _departmentCtrl.text.trim(),
-      licenseNumber:
-          _licenseCtrl.text.trim().isEmpty ? null : _licenseCtrl.text.trim(),
+      role: UserRole.patient,
+      dateOfBirth: _dateOfBirth,
+      gender: _gender,
     );
 
     if (!mounted) return;
     if (ok) {
       UiHelpers.showSuccessSnackBar(
-          context, 'Account created! Welcome to ${AppConstants.appName}.');
+        context,
+        'Account created! Welcome to ${AppConstants.appName}.',
+      );
       context.go(AppRouter.dashboardForRole(auth.currentRole));
     } else {
       UiHelpers.showErrorSnackBar(
-          context, auth.errorMessage ?? AppConstants.errAuthFailed);
+        context,
+        auth.errorMessage ?? AppConstants.errAuthFailed,
+      );
     }
   }
 
@@ -88,7 +95,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context.go(AppRouter.dashboardForRole(auth.currentRole));
     } else {
       UiHelpers.showErrorSnackBar(
-          context, auth.errorMessage ?? AppConstants.errAuthFailed);
+        context,
+        auth.errorMessage ?? AppConstants.errAuthFailed,
+      );
     }
   }
 
@@ -97,271 +106,251 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: MetroTopWave(height: 120),
-          ),
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: MetroBottomWave(height: 80),
-          ),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 8),
-
-                        // ── Back button + Logo ───────────────────────────
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(BootstrapIcons.arrow_left,
-                                  size: 18),
-                              onPressed: () => context.pop(),
-                            ),
-                            const Spacer(),
-                            const AppLogo(size: 36, showShadow: false),
-                            const Spacer(),
-                            const SizedBox(width: 40),
-                          ],
-                        ),
-
-                        // ── Hospital name ────────────────────────────────
-                        Center(
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(
-                                'Metro Health',
-                                style: GoogleFonts.montserrat(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                  height: 1.1,
-                                ),
-                              ),
-                              Text(
-                                'Hospital Appointment System',
-                                style: GoogleFonts.nunitoSans(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── Header ───────────────────────────────────────
-                        Text(
-                          'Create Account',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Join our healthcare community',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.nunitoSans(
-                              fontSize: 13, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── Error banner ─────────────────────────────────
-                        if (auth.errorMessage != null) ...[
-                          _ErrorBanner(message: auth.errorMessage!),
-                          const SizedBox(height: 14),
-                        ],
-
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 20),
-                          child: Text(
-                            'New accounts are registered as patients. '
-                            'Hospital staff accounts are provisioned by an administrator.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-
-                        // ── Full name ────────────────────────────────────
-                        CustomTextField(
-                          controller: _fullNameCtrl,
-                          label: 'Full Name',
-                          hintText: 'Enter your full name',
-                          prefixIcon: BootstrapIcons.person,
-                          validator: Validators.validateName,
-                        ),
-                        const SizedBox(height: 14),
-
-                        // ── Email ────────────────────────────────────────
-                        CustomTextField(
-                          controller: _emailCtrl,
-                          label: 'Email Address',
-                          hintText: 'Enter your email address',
-                          prefixIcon: BootstrapIcons.envelope,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: Validators.validateEmail,
-                        ),
-                        const SizedBox(height: 14),
-
-                        // ── Phone ────────────────────────────────────────
-                        CustomTextField(
-                          controller: _phoneCtrl,
-                          label: 'Phone Number',
-                          hintText: 'Enter your phone number',
-                          prefixIcon: BootstrapIcons.telephone,
-                          keyboardType: TextInputType.phone,
-                          validator: Validators.validatePhone,
-                        ),
-                        const SizedBox(height: 14),
-
-                        // ── Password ─────────────────────────────────────
-                        CustomTextField(
-                          controller: _passwordCtrl,
-                          label: 'Password',
-                          hintText: 'Create a password',
-                          prefixIcon: BootstrapIcons.lock,
-                          isPassword: true,
-                          validator: Validators.validatePassword,
-                        ),
-                        const SizedBox(height: 14),
-
-                        // ── Confirm password ─────────────────────────────
-                        CustomTextField(
-                          controller: _confirmCtrl,
-                          label: 'Confirm Password',
-                          hintText: 'Re-enter your password',
-                          prefixIcon: BootstrapIcons.lock,
-                          isPassword: true,
-                          validator: (v) => Validators.validateConfirmPassword(
-                              v, _passwordCtrl.text),
-                          onFieldSubmitted: (_) => _handleRegister(),
-                        ),
-                        const SizedBox(height: 22),
-
-                        // ── Create Account button ────────────────────────
-                        CustomButton(
-                          text: 'Create Account',
-                          icon: BootstrapIcons.person_add,
-                          isLoading: auth.isLoading,
-                          onPressed: _handleRegister,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── OR divider ───────────────────────────────────
-                        const _OrDivider(),
-                        const SizedBox(height: 16),
-
-                        // ── Social sign-up ───────────────────────────────
-                        SocialSignInButton(
-                          label: 'Sign up with Google',
-                          assetPath: 'assets/icons/google_logo.png',
-                          onPressed: auth.isLoading ? null : _handleGoogle,
-                        ),
-                        const SizedBox(height: 10),
-                        const SocialSignInButton(
-                          label: 'Sign up with Apple',
-                          icon: BootstrapIcons.apple,
-                          onPressed: null,
-                          isDisabled: true,
-                        ),
-                        const SizedBox(height: 10),
-                        const SocialSignInButton(
-                          label: 'Sign up with Phone',
-                          icon: BootstrapIcons.phone,
-                          onPressed: null,
-                          isDisabled: true,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // ── Login link ───────────────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Already have an account? ',
-                              style: TextStyle(
-                                  fontSize: 13, color: AppColors.textSecondary),
-                            ),
-                            GestureDetector(
-                              onTap: () => context.go('/login'),
-                              child: const Text(
-                                'Login',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+      backgroundColor: _background,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _navy.withValues(alpha: 0.1),
+                      blurRadius: 28,
+                      offset: const Offset(0, 8),
                     ),
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          tooltip: 'Back to login',
+                          onPressed: () => context.go('/login'),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          color: _navy,
+                        ),
+                      ),
+                      const AppLogo(size: 56, showShadow: true),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'MediCare',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: _navy,
+                        ),
+                      ),
+                      const Text(
+                        'Hospital Appointment System',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: _primary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Create Your Account',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: _navy,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Join MediCare for better healthcare services',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          color: Color(0xFF607D95),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      if (auth.errorMessage != null) ...[
+                        _ErrorBanner(message: auth.errorMessage!),
+                        const SizedBox(height: 14),
+                      ],
+                      CustomTextField(
+                        controller: _fullNameCtrl,
+                        label: 'Full Name',
+                        hintText: 'Enter your full name',
+                        prefixIcon: Icons.person_outline_rounded,
+                        validator: Validators.validateName,
+                      ),
+                      const SizedBox(height: 12),
+                      CustomTextField(
+                        controller: _emailCtrl,
+                        label: 'Email Address',
+                        hintText: 'Enter your email address',
+                        prefixIcon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.validateEmail,
+                      ),
+                      const SizedBox(height: 12),
+                      CustomTextField(
+                        controller: _phoneCtrl,
+                        label: 'Phone Number',
+                        hintText: 'Enter your phone number',
+                        prefixIcon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        validator: Validators.validatePhone,
+                      ),
+                      const SizedBox(height: 12),
+                      _PatientDateField(
+                        date: _dateOfBirth,
+                        onTap: _selectDateOfBirth,
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _gender,
+                        decoration: const InputDecoration(
+                          labelText: 'Gender (optional)',
+                          prefixIcon: Icon(Icons.wc_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Female', child: Text('Female')),
+                          DropdownMenuItem(value: 'Male', child: Text('Male')),
+                          DropdownMenuItem(
+                            value: 'Non-binary',
+                            child: Text('Non-binary'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Prefer not to say',
+                            child: Text('Prefer not to say'),
+                          ),
+                        ],
+                        onChanged: auth.isLoading
+                            ? null
+                            : (value) => setState(() => _gender = value),
+                      ),
+                      const SizedBox(height: 12),
+                      CustomTextField(
+                        controller: _passwordCtrl,
+                        label: 'Password',
+                        hintText: 'Create a password',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        isPassword: true,
+                        validator: Validators.validatePassword,
+                      ),
+                      const SizedBox(height: 12),
+                      CustomTextField(
+                        controller: _confirmCtrl,
+                        label: 'Confirm Password',
+                        hintText: 'Re-enter your password',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        isPassword: true,
+                        validator: (value) =>
+                            Validators.validateConfirmPassword(
+                          value,
+                          _passwordCtrl.text,
+                        ),
+                        onFieldSubmitted: (_) => _handleRegister(),
+                      ),
+                      const SizedBox(height: 18),
+                      CustomButton(
+                        text: 'Create Account',
+                        icon: Icons.person_add_alt_1_rounded,
+                        isLoading: auth.isLoading,
+                        onPressed: _handleRegister,
+                      ),
+                      const SizedBox(height: 16),
+                      const _OrDivider(),
+                      const SizedBox(height: 14),
+                      SocialSignInButton(
+                        label: 'Continue with Google',
+                        assetPath: 'assets/icons/google_logo.png',
+                        onPressed: auth.isLoading ? null : _handleGoogle,
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Public registration creates patient accounts only. '
+                        'Staff accounts are created by an administrator.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF607D95),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Already have an account? ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF607D95),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.go('/login'),
+                            child: const Text(
+                              'Login Here',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ── Shared helpers ─────────────────────────────────────────────────────────
+class _PatientDateField extends StatelessWidget {
+  final DateTime? date;
+  final VoidCallback onTap;
 
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
+  const _PatientDateField({required this.date, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.errorLight,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(BootstrapIcons.exclamation_circle,
-              color: AppColors.error, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                  color: AppColors.error,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500),
-            ),
+    final formattedDate = date == null
+        ? 'Select your date of birth (optional)'
+        : '${date!.day.toString().padLeft(2, '0')}/'
+            '${date!.month.toString().padLeft(2, '0')}/${date!.year}';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Date of Birth',
+          prefixIcon: Icon(Icons.cake_outlined),
+          border: OutlineInputBorder(),
+        ),
+        child: Text(
+          formattedDate,
+          style: TextStyle(
+            color: date == null
+                ? const Color(0xFF90A4AE)
+                : _RegisterScreenState._navy,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -374,20 +363,53 @@ class _OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
-        Expanded(child: Divider(color: AppColors.divider)),
+        Expanded(child: Divider(color: Color(0xFFD6E2F0))),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OR',
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF90A4B8),
             ),
           ),
         ),
-        Expanded(child: Divider(color: AppColors.divider)),
+        Expanded(child: Divider(color: Color(0xFFD6E2F0))),
       ],
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF991B1B),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

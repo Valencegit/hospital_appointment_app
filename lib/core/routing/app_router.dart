@@ -27,6 +27,7 @@ import '../../features/staff/screens/role_dashboards.dart';
 
 // Admin
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/create_staff_account_screen.dart';
 import '../../features/admin/screens/manage_users_screen.dart';
 import '../../features/admin/screens/manage_departments_screen.dart';
 import '../../features/admin/screens/reports_screen.dart';
@@ -246,6 +247,10 @@ class AppRouter {
       GoRoute(
         path: '/admin/users',
         builder: (_, __) => const ManageUsersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/users/create-staff',
+        builder: (_, __) => const CreateStaffAccountScreen(),
       ),
       GoRoute(
         path: '/admin/departments',
