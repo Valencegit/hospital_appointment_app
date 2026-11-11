@@ -88,6 +88,7 @@ void main() {
       expect(doctor.specialization, 'Consultant Cardiologist');
       expect(doctor.consultationFee, 120.0);
       expect(doctor.employeeId, 'HOSP-2026-19');
+      expect(doctor.staffId, 'HOSP-2026-19');
 
       final map = doctor.toMap();
       final deserialized = StaffModel.fromMap(map, documentId: 'doc_789');

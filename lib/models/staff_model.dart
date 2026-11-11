@@ -108,7 +108,7 @@ class StaffModel {
     );
   }
 
-  String get staffId => uid;
+  String get staffId => employeeId.isNotEmpty ? employeeId : uid;
 
   String get fullName {
     final full = '$firstName $lastName'.trim();
