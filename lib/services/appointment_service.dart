@@ -3,9 +3,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../core/constants/app_constants.dart';
 import '../models/appointment_model.dart';
 
-/// Handles appointment booking via a Cloud Functions callable (which uses a
-/// Firestore transaction internally) and all appointment queries / status
-/// updates that are permitted directly from the client.
+/// Handles appointment booking via a Cloud Functions callable and appointment
+/// queries / status updates permitted directly from the client.
 class AppointmentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
@@ -14,8 +13,8 @@ class AppointmentService {
   /// Attempts to book via the `bookAppointment` Cloud Function (which uses a
   /// server-side Firestore transaction for capacity safety).
   ///
-  /// Falls back to a direct Firestore transaction if the function is not yet
-  /// deployed (`functions/not-found`) so the app works before deployment.
+  /// Requires the server-side booking function because Firestore rules prohibit
+  /// clients from creating appointment documents directly.
   Future<String> bookAppointment({
     required String patientId,
     required String patientName,
@@ -48,17 +47,9 @@ class AppointmentService {
       }
       throw Exception('Booking failed: unexpected response from server.');
     } on FirebaseFunctionsException catch (e) {
-      // Function not deployed → fall through to direct Firestore write.
       if (e.code == 'not-found') {
-        return _bookDirectly(
-          patientId: patientId,
-          patientName: patientName,
-          slotId: slotId,
-          departmentId: departmentId,
-          departmentName: departmentName,
-          appointmentDate: appointmentDate,
-          appointmentTime: appointmentTime,
-          notes: notes,
+        throw Exception(
+          'Appointment booking is unavailable. Please try again later.',
         );
       }
       // All other Cloud Function errors → surface to user.
@@ -78,80 +69,6 @@ class AppointmentService {
       if (e is Exception) rethrow;
       throw Exception('An unexpected error occurred: $e');
     }
-  }
-
-  /// Direct Firestore transaction — used when Cloud Functions are not deployed.
-  /// Provides the same capacity-safe atomic booking as the Cloud Function.
-  Future<String> _bookDirectly({
-    required String patientId,
-    required String patientName,
-    required String slotId,
-    required String departmentId,
-    required String departmentName,
-    required DateTime appointmentDate,
-    required String appointmentTime,
-    String? notes,
-  }) async {
-    final slotRef =
-        _db.collection(AppConstants.slotsCollection).doc(slotId);
-    final appointmentRef =
-        _db.collection(AppConstants.appointmentsCollection).doc();
-    final appointmentId = appointmentRef.id;
-
-    await _db.runTransaction((tx) async {
-      final slotSnap = await tx.get(slotRef);
-      if (!slotSnap.exists) {
-        throw Exception('The selected slot could not be found.');
-      }
-      final slot = slotSnap.data()!;
-      final bookedCount = (slot['bookedCount'] as int?) ?? 0;
-      final capacity = (slot['capacity'] as int?) ?? 0;
-      final isActive = (slot['isActive'] as bool?) ?? false;
-
-      if (!isActive) {
-        throw Exception('This slot is no longer active.');
-      }
-      if (bookedCount >= capacity) {
-        throw Exception('This slot is fully booked. Please choose another time.');
-      }
-
-      tx.set(appointmentRef, {
-        'patientId': patientId,
-        'patientName': patientName,
-        'slotId': slotId,
-        'departmentId': departmentId,
-        'departmentName': departmentName,
-        'doctorId': slot['doctorId'],
-        'doctorName': slot['doctorName'],
-        'appointmentDate': Timestamp.fromDate(appointmentDate),
-        'appointmentTime': appointmentTime,
-        'status': AppConstants.statusPending,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
-        'bookedAt': FieldValue.serverTimestamp(),
-        'updatedAt': null,
-      });
-
-      tx.update(slotRef, {
-        'bookedCount': FieldValue.increment(1),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    });
-
-    // Best-effort in-app notification
-    try {
-      await _db.collection(AppConstants.notificationsCollection).add({
-        'userId': patientId,
-        'title': 'Appointment Requested',
-        'body':
-            'Your $departmentName appointment is pending confirmation.',
-        'type': 'booking_confirmed',
-        'appointmentId': appointmentId,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (_) {}
-
-    return appointmentId;
   }
 
   // ── Patient: stream own appointments ──────────────────────────────────────

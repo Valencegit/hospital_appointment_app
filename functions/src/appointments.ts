@@ -162,7 +162,7 @@ export const bookAppointment = onCall(
         userId: patientId,
         title: "Appointment Requested",
         body: `Your ${appointmentDepartmentName} appointment is pending confirmation.`,
-        type: "booking_confirmed",
+        type: "appointment_requested",
         appointmentId,
         isRead: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

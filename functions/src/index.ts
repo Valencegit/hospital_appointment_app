@@ -1,14 +1,146 @@
 import * as admin from "firebase-admin";
 
 // v2 imports — must match firebase-functions ^6.x
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import {
+  onDocumentCreated,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
 admin.initializeApp();
 
+async function notifyAppointmentUser(
+  userId: string,
+  appointmentId: string,
+  title: string,
+  body: string,
+  type: string
+): Promise<void> {
+  const db = admin.firestore();
+  await db.collection("notifications").add({
+    userId,
+    title,
+    body,
+    type,
+    appointmentId,
+    isRead: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  const token = userDoc.data()?.fcmToken;
+  if (typeof token !== "string" || !token) return;
+
+  const message: admin.messaging.Message = {
+    token,
+    notification: { title, body },
+    data: { type, appointmentId },
+    android: {
+      notification: { channelId: "hospital_appointments" },
+    },
+    apns: {
+      payload: { aps: { sound: "default" } },
+    },
+  };
+
+  try {
+    await admin.messaging().send(message);
+  } catch (error) {
+    console.error(
+      `Could not send ${type} notification to user ${userId} for appointment ${appointmentId}:`,
+      error
+    );
+  }
+}
+
 // Re-export the booking callable from appointments.ts
 export { bookAppointment } from "./appointments";
+
+export const notifyDoctorOfNewAppointment = onDocumentCreated(
+  "appointments/{appointmentId}",
+  async (event) => {
+    const appointment = event.data?.data();
+    const doctorId = appointment?.doctorId;
+    if (typeof doctorId !== "string" || !doctorId) {
+      console.warn(
+        `Appointment ${event.params.appointmentId} has no assigned doctor; no doctor notification was sent.`
+      );
+      return;
+    }
+
+    await notifyAppointmentUser(
+      doctorId,
+      event.params.appointmentId,
+      "New Appointment Request",
+      `A patient requested a ${appointment.departmentName ?? "hospital"} appointment at ${appointment.appointmentTime ?? "an upcoming time"}.`,
+      "appointment_requested"
+    );
+  }
+);
+
+export const notifyAppointmentStatusChange = onDocumentUpdated(
+  "appointments/{appointmentId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after || before.status === after.status) return;
+
+    const appointmentId = event.params.appointmentId;
+    const status = after.status;
+    let userId: string | undefined;
+    let title: string;
+    let body: string;
+    let type: string;
+
+    switch (status) {
+      case "confirmed":
+        userId = after.patientId;
+        title = "Appointment Confirmed";
+        body = `Your ${after.departmentName ?? "hospital"} appointment at ${after.appointmentTime ?? "the scheduled time"} is confirmed.`;
+        type = "appointment_confirmed";
+        break;
+      case "cancelled":
+        userId = after.patientId;
+        title = "Appointment Cancelled";
+        body = "Your appointment cancellation has been processed.";
+        type = "appointment_cancelled";
+        break;
+      case "completed":
+        userId = after.patientId;
+        title = "Appointment Completed";
+        body = "Your appointment has been marked as completed.";
+        type = "appointment_completed";
+        break;
+      case "checked_in":
+        userId = after.patientId;
+        title = "Appointment Check-in";
+        body = "You have been checked in for your appointment.";
+        type = "appointment_checked_in";
+        break;
+      case "cancel_requested":
+      case "reschedule_requested":
+        userId = after.doctorId;
+        title = status === "cancel_requested"
+          ? "Cancellation Requested"
+          : "Reschedule Requested";
+        body = `A patient has requested to ${status === "cancel_requested" ? "cancel" : "reschedule"} an appointment.`;
+        type = status;
+        break;
+      default:
+        return;
+    }
+
+    if (typeof userId !== "string" || !userId) {
+      console.warn(
+        `Appointment ${appointmentId} changed to ${status} without a notification recipient.`
+      );
+      return;
+    }
+
+    await notifyAppointmentUser(userId, appointmentId, title, body, type);
+  }
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Patient ID generation
@@ -158,7 +290,7 @@ export const processBookingRequest = onDocumentCreated(
         userId: patientId,
         title: "Appointment Requested",
         body: `Your ${appointmentDepartmentName} appointment is pending confirmation.`,
-        type: "booking_confirmed",
+        type: "appointment_requested",
         appointmentId,
         isRead: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
