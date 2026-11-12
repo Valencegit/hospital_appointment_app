@@ -563,12 +563,17 @@ class _PatientHeroHeader extends StatelessWidget {
                     (a, b) => a.appointmentDate.compareTo(b.appointmentDate));
 
               final appt = upcoming.isNotEmpty ? upcoming.first : null;
-              final dateStr = appt != null
-                  ? DateFormat('EEE, MMM d, yyyy • h:mm a')
-                      .format(appt.appointmentDate)
-                  : 'No upcoming appointments';
-              final deptName =
-                  appt?.departmentName ?? 'Book a visit to see it here.';
+              final dateStr = snap.hasError
+                  ? 'Unable to load appointment'
+                  : snap.connectionState == ConnectionState.waiting
+                      ? 'Loading appointments...'
+                      : appt != null
+                          ? DateFormat('EEE, MMM d, yyyy • h:mm a')
+                              .format(appt.appointmentDate)
+                          : 'No upcoming appointments';
+              final deptName = snap.hasError
+                  ? 'Please try again later.'
+                  : appt?.departmentName ?? 'Book a visit to see it here.';
 
               return Container(
                 width: double.infinity,
@@ -642,6 +647,8 @@ class _PatientHeroHeader extends StatelessWidget {
                       onTap: () {
                         if (appt != null) {
                           context.push('/patient/appointments/${appt.id}');
+                        } else if (snap.hasError) {
+                          context.push('/patient/appointments');
                         } else {
                           context.push('/patient/book');
                         }

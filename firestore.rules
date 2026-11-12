@@ -130,11 +130,11 @@ service cloud.firestore {
         && request.resource.data.date is timestamp
         && request.resource.data.startTime is string
         && request.resource.data.endTime is string;
-      allow update: if (isScheduler() || isAdmin())
-        && request.resource.data.bookedCount == resource.data.bookedCount
-        && request.resource.data.capacity is int
-        && request.resource.data.capacity >= resource.data.bookedCount;
-      allow update: if doctorOwnsDepartment(resource.data.departmentId)
+      allow update: if ((isScheduler() || isAdmin())
+          && request.resource.data.bookedCount == resource.data.bookedCount
+          && request.resource.data.capacity is int
+          && request.resource.data.capacity >= resource.data.bookedCount)
+        || (doctorOwnsDepartment(resource.data.departmentId)
         && resource.data.doctorId == request.auth.uid
         && request.resource.data.doctorId == request.auth.uid
         && request.resource.data.departmentId == resource.data.departmentId
@@ -144,7 +144,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly([
             'date', 'startTime', 'endTime', 'capacity', 'isActive', 'updatedAt'
-          ]);
+          ]));
       allow delete: if isAdmin();
     }
 

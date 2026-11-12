@@ -289,6 +289,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     color: AppColors.secondary,
                     onTap: () => context.push('/staff/patients'),
                   ),
+                  _QuickAction(
+                    label: 'Notifications',
+                    icon: Icons.notifications_none_outlined,
+                    color: AppColors.roleReceptionist,
+                    onTap: () => context.push('/staff/notifications'),
+                  ),
                 ]),
 
                 const SizedBox(height: 22),

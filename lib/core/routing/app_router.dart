@@ -92,6 +92,13 @@ class AppRouter {
           !role.isDoctor) {
         return dashboardForRole(role);
       }
+      if (loc.startsWith('/staff/notifications') &&
+          !role.isDoctor &&
+          !role.isReceptionist &&
+          !role.isSchedulingOfficer &&
+          !role.isAdmin) {
+        return dashboardForRole(role);
+      }
       if (loc.startsWith('/staff/patients') &&
           !role.isReceptionist &&
           !role.isAdmin) {
@@ -213,6 +220,10 @@ class AppRouter {
       GoRoute(
         path: '/staff/schedules',
         builder: (_, __) => const ManageSlotsScreen(),
+      ),
+      GoRoute(
+        path: '/staff/notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
       GoRoute(
         path: '/staff/patients',
