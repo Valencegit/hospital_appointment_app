@@ -12,14 +12,25 @@
  *      Save it as:  scripts/serviceAccountKey.json
  *      Add serviceAccountKey.json to .gitignore (NEVER commit it).
  *
- *   3. Run:
+ *   3. Run (PowerShell):
+ *        $env:ADMIN_EMAIL="admin@yourhospital.com"
+ *        $env:ADMIN_PASSWORD="YourStr0ngPassw0rd!"
+ *        $env:ADMIN_NAME="System Administrator"
+ *        node scripts/create-admin.cjs
+ *
+ *      For an existing account, also set:
+ *        $env:ADMIN_CONFIRM_EXISTING_EMAIL="admin@yourhospital.com"
+ *
+ *      Or set the three environment variables in your trusted deployment
+ *      environment before running:
  *        ADMIN_EMAIL="admin@yourhospital.com" \
  *        ADMIN_PASSWORD="YourStr0ngPassw0rd!" \
  *        ADMIN_NAME="System Administrator" \
  *        node scripts/create-admin.cjs
  *
- * This script is SAFE to re-run — it checks for an existing email first
- * and only creates the account if it does not already exist.
+ * If the email already belongs to an Auth account, confirm that account is
+ * intended to become an administrator by also setting
+ * ADMIN_CONFIRM_EXISTING_EMAIL to the same email address.
  *
  * IMPORTANT:
  *   • Use a strong password (12+ characters, mixed case, numbers, symbols).
@@ -51,17 +62,21 @@ admin.initializeApp({
 
 // ── Read credentials from environment ─────────────────────────────────────
 const email    = (process.env.ADMIN_EMAIL    || '').trim();
-const password = (process.env.ADMIN_PASSWORD || '').trim();
-const fullName = (process.env.ADMIN_NAME     || 'System Administrator').trim();
+const password = process.env.ADMIN_PASSWORD || '';
+const fullName = (process.env.ADMIN_NAME     || '').trim();
 
-if (!email) {
-  console.error('\n❌  Set ADMIN_EMAIL environment variable.\n');
+if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  console.error('\n❌  Set ADMIN_EMAIL to a valid email address.\n');
   process.exit(1);
 }
 if (!password || password.length < 12) {
   console.error(
     '\n❌  Set ADMIN_PASSWORD to a string of at least 12 characters.\n'
   );
+  process.exit(1);
+}
+if (!fullName) {
+  console.error('\n❌  Set ADMIN_NAME to the administrator\'s full name.\n');
   process.exit(1);
 }
 
@@ -71,38 +86,45 @@ async function createAdmin() {
   const db   = admin.firestore();
 
   // Check for existing account
-  let existingUid;
+  let userRecord;
   try {
-    const existing = await auth.getUserByEmail(email);
-    existingUid = existing.uid;
+    userRecord = await auth.getUserByEmail(email);
     console.log(`\n⚠️   Firebase Auth account already exists for ${email}`);
-    console.log(`    UID: ${existingUid}`);
+    console.log(`    UID: ${userRecord.uid}`);
+    const confirmedEmail =
+      (process.env.ADMIN_CONFIRM_EXISTING_EMAIL || '').trim().toLowerCase();
+    if (confirmedEmail !== email.toLowerCase()) {
+      throw new Error(
+        'The account already exists. Verify it is the intended administrator, ' +
+        'then set ADMIN_CONFIRM_EXISTING_EMAIL to that email to continue.'
+      );
+    }
   } catch (err) {
     if (err.code !== 'auth/user-not-found') throw err;
   }
 
-  let uid;
-  if (existingUid) {
-    uid = existingUid;
-    // Ensure the custom claim is set even if the user already existed
-    await auth.setCustomUserClaims(uid, { role: 'admin' });
-    console.log('    Custom claim role=admin set on existing account.');
-  } else {
-    // Create a new Firebase Auth account
-    const userRecord = await auth.createUser({
+  const existingAccount = Boolean(userRecord);
+  if (!userRecord) {
+    userRecord = await auth.createUser({
       email,
       password,
       displayName: fullName,
-      emailVerified: true,
+      emailVerified: false,
       disabled: false,
     });
-    uid = userRecord.uid;
-    console.log(`\n✅  Firebase Auth account created.`);
-    console.log(`    UID:   ${uid}`);
+    console.log('\n✅  Firebase Auth account created.');
+    console.log(`    UID:   ${userRecord.uid}`);
     console.log(`    Email: ${email}`);
+  }
 
-    // Assign the trusted admin role claim
-    await auth.setCustomUserClaims(uid, { role: 'admin' });
+  const uid = userRecord.uid;
+  await auth.setCustomUserClaims(uid, {
+    ...(userRecord.customClaims || {}),
+    role: 'admin',
+  });
+  if (existingAccount) {
+    console.log('    Custom claim role=admin set; existing claims preserved.');
+  } else {
     console.log('    Custom claim role=admin assigned.');
   }
 
