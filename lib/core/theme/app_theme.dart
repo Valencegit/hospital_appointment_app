@@ -89,7 +89,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        backgroundColor: AppColors.primaryDark,
+        backgroundColor: AppColors.primaryDark,  // dark teal #006D68
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         iconTheme: IconThemeData(color: Colors.white),
