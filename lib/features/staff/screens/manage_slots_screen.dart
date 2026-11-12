@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../models/department_model.dart';
 import '../../../models/slot_model.dart';
 import '../../../models/user_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/department_provider.dart';
 import '../../../services/user_service.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
@@ -23,6 +24,11 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isDoctor = auth.currentRole.isDoctor;
+    final doctorId = isDoctor ? auth.currentUser?.uid : null;
+    final assignedDepartmentId = auth.staffProfile?.departmentId;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Slots')),
       floatingActionButton: FloatingActionButton.extended(
@@ -39,10 +45,38 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
               stream:
                   context.read<DepartmentProvider>().activeDepartmentsStream(),
               builder: (ctx, snap) {
-                final depts = snap.data ?? [];
+                final allDepartments = snap.data ?? [];
+                final depts = isDoctor
+                    ? allDepartments
+                        .where((dept) => dept.id == assignedDepartmentId)
+                        .toList()
+                    : allDepartments;
+                DepartmentModel? selectedDepartment;
+                if (isDoctor && depts.isNotEmpty) {
+                  selectedDepartment = depts.first;
+                  if (_selectedDept?.id != selectedDepartment.id) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted &&
+                          _selectedDept?.id != selectedDepartment!.id) {
+                        setState(() => _selectedDept = selectedDepartment);
+                      }
+                    });
+                  }
+                } else if (_selectedDept != null &&
+                    depts.any((dept) => dept.id == _selectedDept!.id)) {
+                  selectedDepartment = _selectedDept;
+                }
+                if (snap.hasError) {
+                  return const Text('Unable to load departments.');
+                }
+                if (isDoctor && depts.isEmpty) {
+                  return const Text(
+                    'No active department is assigned to your account.',
+                  );
+                }
                 return DropdownButtonFormField<DepartmentModel>(
-                  initialValue: _selectedDept,
-                  hint: const Text('Select Department'),
+                  initialValue: selectedDepartment,
+                  hint: Text(isDoctor ? 'Assigned Department' : 'Select Department'),
                   decoration: const InputDecoration(
                     labelText: 'Department',
                     prefixIcon: Icon(BootstrapIcons.hospital),
@@ -53,7 +87,9 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                             child: Text(d.name),
                           ))
                       .toList(),
-                  onChanged: (d) => setState(() => _selectedDept = d),
+                  onChanged: isDoctor
+                      ? null
+                      : (d) => setState(() => _selectedDept = d),
                 );
               },
             ),
@@ -106,7 +142,11 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                 : StreamBuilder<List<SlotModel>>(
                     stream: context
                         .read<DepartmentProvider>()
-                        .slotsStream(_selectedDept!.id, _selectedDate),
+                        .slotsStream(
+                          _selectedDept!.id,
+                          _selectedDate,
+                          doctorId: doctorId,
+                        ),
                     builder: (ctx, snap) {
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -172,8 +212,13 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
     final startCtrl = TextEditingController();
     final endCtrl = TextEditingController();
     final capacityCtrl = TextEditingController(text: '10');
-    String? selectedDoctorId;
-    String? selectedDoctorName;
+    final auth = context.read<AuthProvider>();
+    final isDoctor = auth.currentRole.isDoctor;
+    String? selectedDoctorId =
+        isDoctor ? auth.currentUser?.uid : null;
+    String? selectedDoctorName = isDoctor
+        ? auth.staffProfile?.fullName ?? auth.currentUser?.email
+        : null;
 
     // Capture before async gap so we can use after dialog closes
     final deptProvider = context.read<DepartmentProvider>();
@@ -194,47 +239,56 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                       color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
-                StreamBuilder<List<UserModel>>(
-                  stream: UserService().doctorsStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return const Text('Unable to load doctors.');
-                    }
-                    final doctors = snapshot.data ?? const <UserModel>[];
-                    return DropdownButtonFormField<String>(
-                      initialValue: selectedDoctorId,
-                      decoration: const InputDecoration(
-                        labelText: 'Assigned doctor',
-                        prefixIcon: Icon(BootstrapIcons.person_badge),
-                      ),
-                      items: doctors
-                          .map(
-                            (doctor) => DropdownMenuItem(
-                              value: doctor.uid,
-                              child: Text(
-                                doctor.fullName.isEmpty
-                                    ? doctor.email
-                                    : doctor.fullName,
+                if (isDoctor)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(BootstrapIcons.person_badge),
+                    title: const Text('Assigned doctor'),
+                    subtitle: Text(selectedDoctorName ?? 'Your account'),
+                  )
+                else
+                  StreamBuilder<List<UserModel>>(
+                    stream: UserService().doctorsStream(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Text('Unable to load doctors.');
+                      }
+                      final doctors = snapshot.data ?? const <UserModel>[];
+                      return DropdownButtonFormField<String>(
+                        initialValue: selectedDoctorId,
+                        decoration: const InputDecoration(
+                          labelText: 'Assigned doctor',
+                          prefixIcon: Icon(BootstrapIcons.person_badge),
+                        ),
+                        items: doctors
+                            .map(
+                              (doctor) => DropdownMenuItem(
+                                value: doctor.uid,
+                                child: Text(
+                                  doctor.fullName.isEmpty
+                                      ? doctor.email
+                                      : doctor.fullName,
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (id) {
-                        UserModel? doctor;
-                        for (final item in doctors) {
-                          if (item.uid == id) {
-                            doctor = item;
-                            break;
+                            )
+                            .toList(),
+                        onChanged: (id) {
+                          UserModel? doctor;
+                          for (final item in doctors) {
+                            if (item.uid == id) {
+                              doctor = item;
+                              break;
+                            }
                           }
-                        }
-                        setDialogState(() {
-                          selectedDoctorId = id;
-                          selectedDoctorName = doctor?.fullName;
-                        });
-                      },
-                    );
-                  },
-                ),
+                          setDialogState(() {
+                            selectedDoctorId = id;
+                            selectedDoctorName =
+                                doctor?.fullName ?? doctor?.email;
+                          });
+                        },
+                      );
+                    },
+                  ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: startCtrl,
@@ -276,6 +330,45 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                   : () async {
                       final department = _selectedDept!;
                       final date = _selectedDate;
+                  final capacity =
+                      int.tryParse(capacityCtrl.text.trim());
+                  DateTime startTime;
+                  DateTime endTime;
+                  try {
+                    startTime = DateFormat('h:mm a')
+                        .parseStrict(startCtrl.text.trim());
+                    endTime = DateFormat('h:mm a')
+                        .parseStrict(endCtrl.text.trim());
+                  } on FormatException {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter times like 09:00 AM.'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
+                  final slotStart = DateTime(
+                    date.year,
+                    date.month,
+                    date.day,
+                    startTime.hour,
+                    startTime.minute,
+                  );
+                  if (capacity == null ||
+                      capacity <= 0 ||
+                      !endTime.isAfter(startTime) ||
+                      !slotStart.isAfter(DateTime.now())) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Choose a future time range and a positive capacity.',
+                        ),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                    return;
+                  }
                       Navigator.pop(dialogContext);
                       final slot = SlotModel(
                         id: '',
@@ -284,9 +377,9 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                         doctorId: selectedDoctorId,
                         doctorName: selectedDoctorName,
                         date: date,
-                        startTime: startCtrl.text.trim(),
-                        endTime: endCtrl.text.trim(),
-                        capacity: int.tryParse(capacityCtrl.text.trim()) ?? 10,
+                        startTime: DateFormat('hh:mm a').format(startTime),
+                        endTime: DateFormat('hh:mm a').format(endTime),
+                        capacity: capacity,
                         createdAt: DateTime.now(),
                       );
                       final ok = await deptProvider.saveSlot(slot);

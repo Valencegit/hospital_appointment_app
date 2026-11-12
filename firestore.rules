@@ -29,6 +29,19 @@ service cloud.firestore {
       return hasRole('doctor');
     }
 
+    function doctorOwnsDepartment(departmentId) {
+      return isDoctor()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && get(/databases/$(database)/documents/staff/$(request.auth.uid))
+          .data.is_active != false
+        && (
+          get(/databases/$(database)/documents/staff/$(request.auth.uid))
+            .data.department_id == departmentId
+          || get(/databases/$(database)/documents/staff/$(request.auth.uid))
+            .data.departmentId == departmentId
+        );
+    }
+
     function isScheduler() {
       return hasRole('scheduling_officer');
     }
@@ -108,14 +121,30 @@ service cloud.firestore {
 
     match /appointment_slots/{slotId} {
       allow read: if signedIn();
-      allow create: if (isScheduler() || isAdmin())
+      allow create: if (isScheduler() || isAdmin()
+          || (request.resource.data.doctorId == request.auth.uid
+            && doctorOwnsDepartment(request.resource.data.departmentId)))
         && request.resource.data.capacity is int
         && request.resource.data.capacity > 0
-        && request.resource.data.bookedCount == 0;
+        && request.resource.data.bookedCount == 0
+        && request.resource.data.date is timestamp
+        && request.resource.data.startTime is string
+        && request.resource.data.endTime is string;
       allow update: if (isScheduler() || isAdmin())
         && request.resource.data.bookedCount == resource.data.bookedCount
         && request.resource.data.capacity is int
         && request.resource.data.capacity >= resource.data.bookedCount;
+      allow update: if doctorOwnsDepartment(resource.data.departmentId)
+        && resource.data.doctorId == request.auth.uid
+        && request.resource.data.doctorId == request.auth.uid
+        && request.resource.data.departmentId == resource.data.departmentId
+        && request.resource.data.bookedCount == resource.data.bookedCount
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= resource.data.bookedCount
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'date', 'startTime', 'endTime', 'capacity', 'isActive', 'updatedAt'
+          ]);
       allow delete: if isAdmin();
     }
 

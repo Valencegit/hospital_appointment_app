@@ -124,9 +124,25 @@ flutter run
 
 New public registrations are patients only. Role access is granted by Firebase
 Auth custom claims set through Cloud Functions; changing a Firestore `role`
-field alone does not grant access. Use the `createAdminUser` callable once from
-a trusted setup client with the configured secret to create the initial
-administrator; the bootstrap callable locks after an administrator is created.
+field alone does not grant access. Create the first administrator from a trusted
+machine with `scripts/create-admin.cjs` and Application Default Credentials:
+
+```powershell
+gcloud auth application-default login
+$env:ADMIN_EMAIL = "admin@yourhospital.com"
+$env:ADMIN_PASSWORD = "Use-a-new-unique-password"
+$env:ADMIN_NAME = "Hospital Administrator"
+node scripts/create-admin.cjs
+```
+
+The script uses the default Firebase project in `.firebaserc`; set
+`FIREBASE_PROJECT_ID` to override it. If the Auth account already exists, first
+verify that it is the intended administrator and set
+`ADMIN_CONFIRM_EXISTING_EMAIL` to that same email. The script does not reset
+existing account passwords. Alternatively, the `createAdminUser` callable can
+be used once from a trusted setup client with its server-side secret.
+
+The bootstrap callable locks after an administrator is created.
 The admin user-management screen can create receptionist, doctor, and
 scheduling-officer accounts with a staff ID and department, and send a password
 setup email. It can also assign roles to existing accounts and manage account
@@ -134,6 +150,9 @@ status. Existing staff/admin users need claims provisioned through a trusted
 migration before they can use staff features. Never put `ADMIN_SETUP_SECRET`
 in the Flutter app. Remove or rotate it after initial setup and redeploy the
 Functions.
+
+Doctors can create and manage slots only for their assigned active department.
+Scheduling officers and administrators can manage slots across departments.
 
 ---
 
@@ -153,10 +172,10 @@ Run unit and widget tests:
 flutter test
 ```
 
-For integration testing, start the Firebase emulators first:
-```bash
-firebase emulators:start
-```
+The current `hospital_workflow_test.dart` is a model-level workflow test; it
+does not contact Firebase. Live Authentication, Firestore Rules, Functions,
+FCM, and device notification behavior still require emulator or deployed
+Firebase configuration and end-to-end verification.
 
 ---
 

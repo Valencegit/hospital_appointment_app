@@ -279,10 +279,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     onTap: () => context.push('/staff/appointments'),
                   ),
                   _QuickAction(
-                    label: 'My\nSchedule',
+                    label: 'Manage\nSlots',
                     icon: Icons.schedule_outlined,
                     color: AppColors.primary,
-                    onTap: () => _showScheduleSheet(context, uid),
+                    onTap: () => context.push('/staff/schedules'),
                   ),
                   _QuickAction(
                     label: 'Patient\nRecords',
@@ -355,68 +355,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           if (i == 1) context.push('/staff/appointments');
           if (i == 2) context.push('/staff/patients');
         },
-      ),
-    );
-  }
-
-  void _showScheduleSheet(BuildContext ctx, String uid) {
-    showModalBottomSheet<void>(
-      context: ctx,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SizedBox(
-        height: 440,
-        child: StreamBuilder<List<SlotModel>>(
-          stream: ctx.read<DepartmentProvider>().doctorSlotsStream(uid),
-          builder: (ctx, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final slots = snap.data ?? [];
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              children: [
-                const Text(
-                  'My Schedule',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                if (slots.isEmpty)
-                  const _EmptyState(
-                    icon: Icons.calendar_month_outlined,
-                    message: 'No slots assigned to you.',
-                  )
-                else
-                  ...slots.map((s) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(s.departmentName),
-                        subtitle: Text(
-                          '${DateFormat('EEE, d MMM').format(s.date)}'
-                          '  ·  ${s.startTime} – ${s.endTime}',
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${s.bookedCount}/${s.capacity}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      )),
-              ],
-            );
-          },
-        ),
       ),
     );
   }
