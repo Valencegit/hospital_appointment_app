@@ -217,10 +217,11 @@ class AppointmentService {
       final data = document.data();
       final status = data['status'] as String? ?? 'unknown';
       final department = data['departmentName'] as String? ?? 'Unknown';
-      statusCounts.update(status, (count) => count + 1, ifAbsent: () => 1);
+      statusCounts.update(status, (currentCount) => currentCount + 1,
+          ifAbsent: () => 1);
       departmentCounts.update(
         department,
-        (count) => count + 1,
+        (currentCount) => currentCount + 1,
         ifAbsent: () => 1,
       );
     }

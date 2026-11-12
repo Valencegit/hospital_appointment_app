@@ -76,7 +76,8 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                 }
                 return DropdownButtonFormField<DepartmentModel>(
                   initialValue: selectedDepartment,
-                  hint: Text(isDoctor ? 'Assigned Department' : 'Select Department'),
+                  hint: Text(
+                      isDoctor ? 'Assigned Department' : 'Select Department'),
                   decoration: const InputDecoration(
                     labelText: 'Department',
                     prefixIcon: Icon(BootstrapIcons.hospital),
@@ -140,9 +141,7 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                     ),
                   )
                 : StreamBuilder<List<SlotModel>>(
-                    stream: context
-                        .read<DepartmentProvider>()
-                        .slotsStream(
+                    stream: context.read<DepartmentProvider>().slotsStream(
                           _selectedDept!.id,
                           _selectedDate,
                           doctorId: doctorId,
@@ -214,8 +213,7 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
     final capacityCtrl = TextEditingController(text: '10');
     final auth = context.read<AuthProvider>();
     final isDoctor = auth.currentRole.isDoctor;
-    String? selectedDoctorId =
-        isDoctor ? auth.currentUser?.uid : null;
+    String? selectedDoctorId = isDoctor ? auth.currentUser?.uid : null;
     String? selectedDoctorName = isDoctor
         ? auth.staffProfile?.fullName ?? auth.currentUser?.email
         : null;
@@ -330,45 +328,44 @@ class _ManageSlotsScreenState extends State<ManageSlotsScreen> {
                   : () async {
                       final department = _selectedDept!;
                       final date = _selectedDate;
-                  final capacity =
-                      int.tryParse(capacityCtrl.text.trim());
-                  DateTime startTime;
-                  DateTime endTime;
-                  try {
-                    startTime = DateFormat('h:mm a')
-                        .parseStrict(startCtrl.text.trim());
-                    endTime = DateFormat('h:mm a')
-                        .parseStrict(endCtrl.text.trim());
-                  } on FormatException {
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Enter times like 09:00 AM.'),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                    return;
-                  }
-                  final slotStart = DateTime(
-                    date.year,
-                    date.month,
-                    date.day,
-                    startTime.hour,
-                    startTime.minute,
-                  );
-                  if (capacity == null ||
-                      capacity <= 0 ||
-                      !endTime.isAfter(startTime) ||
-                      !slotStart.isAfter(DateTime.now())) {
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Choose a future time range and a positive capacity.',
-                        ),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                    return;
-                  }
+                      final capacity = int.tryParse(capacityCtrl.text.trim());
+                      DateTime startTime;
+                      DateTime endTime;
+                      try {
+                        startTime = DateFormat('h:mm a')
+                            .parseStrict(startCtrl.text.trim());
+                        endTime = DateFormat('h:mm a')
+                            .parseStrict(endCtrl.text.trim());
+                      } on FormatException {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter times like 09:00 AM.'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+                      final slotStart = DateTime(
+                        date.year,
+                        date.month,
+                        date.day,
+                        startTime.hour,
+                        startTime.minute,
+                      );
+                      if (capacity == null ||
+                          capacity <= 0 ||
+                          !endTime.isAfter(startTime) ||
+                          !slotStart.isAfter(DateTime.now())) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Choose a future time range and a positive capacity.',
+                            ),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.pop(dialogContext);
                       final slot = SlotModel(
                         id: '',

@@ -53,6 +53,7 @@ functions/
 - Dart SDK (≥3.5.0)
 - Node.js 20 (for Cloud Functions)
 - Firebase CLI (`npm install -g firebase-tools`)
+- Google Cloud CLI (for the local administrator bootstrap)
 - FlutterFire CLI (`dart pub global activate flutterfire_cli`)
 
 ### 2. Firebase Configuration
@@ -117,8 +118,8 @@ flutter run
 |---|---|
 | `patient` | Register, view departments, book appointments, view own history, and request cancellation |
 | `receptionist` | Manage the appointment queue and access patient records |
-| `doctor` | View assigned appointments and update visit outcomes |
-| `scheduling_officer` | Create and manage appointment slots |
+| `doctor` | Manage own department slots, view assigned appointments, and update visit outcomes |
+| `scheduling_officer` | Create and manage appointment slots across departments |
 | `admin` | Manage users and roles, departments, appointments, reports, and audit logs |
 | `pending` | Signed-in account awaiting trusted role provisioning |
 
@@ -128,6 +129,7 @@ field alone does not grant access. Create the first administrator from a trusted
 machine with `scripts/create-admin.cjs` and Application Default Credentials:
 
 ```powershell
+npm install --prefix scripts
 gcloud auth application-default login
 $env:ADMIN_EMAIL = "admin@yourhospital.com"
 $env:ADMIN_PASSWORD = "Use-a-new-unique-password"
