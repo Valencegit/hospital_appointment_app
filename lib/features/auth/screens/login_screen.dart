@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/utils/ui_helpers.dart';
@@ -36,10 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _biometricService = BiometricService();
 
   // ── Teal design tokens (from mockup) ──────────────────────────────────────
-  static const _tealPrimary = Color(0xFF008F87);
   static const _tealDark = Color(0xFF006D68);
-  static const _tealLight = Color(0xFFDDF7F4);
-  static const _darkText = Color(0xFF263238);
 
   @override
   void initState() {
@@ -277,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
 
                             // Email Address
-                            _GlassFieldLabel(
+                            const _GlassFieldLabel(
                               icon: Icons.email_outlined,
                               label: 'Email Address',
                             ),
@@ -293,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 16),
 
                             // Password
-                            _GlassFieldLabel(
+                            const _GlassFieldLabel(
                               icon: Icons.lock_outlined,
                               label: 'Password',
                             ),
