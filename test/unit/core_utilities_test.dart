@@ -93,12 +93,12 @@ void main() {
     });
 
     test('AppColors palette definitions', () {
-      expect(AppColors.primary, const Color(0xFF0B63E5));
-      expect(AppColors.success, const Color(0xFF0EA568));
-      expect(AppColors.error, const Color(0xFFEF4444));
-      expect(AppColors.warning, const Color(0xFFD97706));
-      expect(AppColors.statusPendingText, const Color(0xFFD97706));
-      expect(AppColors.statusConfirmedText, const Color(0xFF0EA568));
+      expect(AppColors.primary, const Color(0xFF008F87));
+      expect(AppColors.success, const Color(0xFF00897B));
+      expect(AppColors.error, const Color(0xFFE53935));
+      expect(AppColors.warning, const Color(0xFFFF8F00));
+      expect(AppColors.statusPendingText, const Color(0xFFFF8F00));
+      expect(AppColors.statusConfirmedText, const Color(0xFF00897B));
     });
 
     testWidgets('AppTheme generates light and dark themes properly',
