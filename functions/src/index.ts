@@ -11,6 +11,60 @@ admin.initializeApp();
 export { bookAppointment } from "./appointments";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Patient ID generation
+//
+// Called automatically when a new document is created in the `patients/`
+// collection. Assigns a sequential HMS-PAT-XXXXXX hospital ID using a
+// Firestore counter transaction so IDs are always unique and monotonic.
+//
+// The ID is written back to both `patients/{uid}.patientId` and
+// `users/{uid}.patientId` so both collections stay in sync.
+// ─────────────────────────────────────────────────────────────────────────────
+export const assignPatientId = onDocumentCreated(
+  "patients/{uid}",
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const uid = event.params.uid;
+    const data = snap.data();
+
+    // Skip if a Patient ID was already assigned (re-triggered doc)
+    if (typeof data.patientId === "string" && data.patientId.startsWith("HMS-PAT-")) {
+      return;
+    }
+
+    const db = admin.firestore();
+    const counterRef = db.collection("counters").doc("patients");
+    const patientRef = db.collection("patients").doc(uid);
+    const userRef    = db.collection("users").doc(uid);
+
+    let patientId = "";
+
+    await db.runTransaction(async (tx) => {
+      const counter = await tx.get(counterRef);
+      const lastNumber: number = counter.exists
+        ? (counter.data()?.lastNumber ?? 0)
+        : 0;
+      const nextNumber = lastNumber + 1;
+      patientId = `HMS-PAT-${String(nextNumber).padStart(6, "0")}`;
+
+      tx.set(counterRef, { lastNumber: nextNumber }, { merge: true });
+      tx.update(patientRef, { patientId });
+    });
+
+    // Mirror the ID onto the users document (best-effort, non-critical)
+    try {
+      await userRef.update({ patientId });
+    } catch {
+      // users/ document may not exist yet during early registration
+    }
+
+    console.log(`[assignPatientId] Assigned ${patientId} to patient ${uid}`);
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Booking trigger: processes booking_requests documents transactionally
 // ─────────────────────────────────────────────────────────────────────────────
 export const processBookingRequest = onDocumentCreated(

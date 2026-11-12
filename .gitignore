@@ -67,5 +67,14 @@ android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 lib/firebase_options.dart
 
+# ── Scripts / Admin bootstrap ──────────────────────────────────────────────
+scripts/serviceAccountKey.json
+scripts/node_modules/
+
+
 # Widget Preview related
 .widget_preview/
+
+# ── Admin bootstrap script dependencies ───────────────────────────────────
+scripts/serviceAccountKey.json
+scripts/node_modules/
