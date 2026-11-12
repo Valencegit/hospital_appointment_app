@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/notification_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/firestore_service.dart';
+import '../../../services/notification_service.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
 /// Screen 11: Notifications — appointment updates with read/unread indicator.
@@ -25,7 +26,18 @@ class NotificationsScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                await NotificationService.instance.markAllRead(uid);
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not mark notifications as read.'),
+                  ),
+                );
+              }
+            },
             child: const Text(
               'Mark all read',
               style: TextStyle(
@@ -42,71 +54,20 @@ class NotificationsScreen extends StatelessWidget {
         builder: (ctx, snap) {
           final liveList = snap.data ?? [];
 
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError) {
+            return const Center(
+              child: Text('Unable to load notifications. Please try again.'),
+            );
+          }
           if (liveList.isEmpty) {
-            return ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                _NotificationItemRow(
-                  icon: BootstrapIcons.check_lg,
-                  iconColor: Colors.white,
-                  iconBgColor: const Color(0xFF0EA568),
-                  title: 'Appointment Confirmed',
-                  message:
-                      'Your appointment is confirmed\n(Dec 2, 2025, 10:00 AM)',
-                  timeAgo: '2m ago',
-                  isRead: false,
-                  onTap: () {},
-                ),
-                const Divider(
-                    height: 1, indent: 70, color: Color(0xFFF1F5F9)),
-                _NotificationItemRow(
-                  icon: BootstrapIcons.bell_fill,
-                  iconColor: Colors.white,
-                  iconBgColor: const Color(0xFF008F87),
-                  title: 'Appointment Reminder',
-                  message:
-                      'Your appointment is tomorrow\n(Dec 2, 2025)',
-                  timeAgo: '1h ago',
-                  isRead: false,
-                  onTap: () {},
-                ),
-                const Divider(
-                    height: 1, indent: 70, color: Color(0xFFF1F5F9)),
-                _NotificationItemRow(
-                  icon: BootstrapIcons.info_circle_fill,
-                  iconColor: Colors.white,
-                  iconBgColor: const Color(0xFFF59E0B),
-                  title: 'Appointment Updated',
-                  message: 'Your appointment time has\nbeen changed.',
-                  timeAgo: '2h ago',
-                  isRead: true,
-                  onTap: () {},
-                ),
-                const Divider(
-                    height: 1, indent: 70, color: Color(0xFFF1F5F9)),
-                _NotificationItemRow(
-                  icon: BootstrapIcons.x_circle,
-                  iconColor: Colors.white,
-                  iconBgColor: const Color(0xFFEF4444),
-                  title: 'Cancellation Request Update',
-                  message: 'Your cancellation has been processed.',
-                  timeAgo: '1d ago',
-                  isRead: true,
-                  onTap: () {},
-                ),
-                const Divider(
-                    height: 1, indent: 70, color: Color(0xFFF1F5F9)),
-                _NotificationItemRow(
-                  icon: Icons.swap_horiz_rounded,
-                  iconColor: Colors.white,
-                  iconBgColor: const Color(0xFF7C3AED),
-                  title: 'Reschedule Request Update',
-                  message: 'Your reschedule has been confirmed.',
-                  timeAgo: '2d ago',
-                  isRead: true,
-                  onTap: () {},
-                ),
-              ],
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('You have no notifications yet.'),
+              ),
             );
           }
 
@@ -131,9 +92,7 @@ class NotificationsScreen extends StatelessWidget {
                 isRead: n.isRead,
                 onTap: () {
                   if (!n.isRead) {
-                    context
-                        .read<FirestoreService>()
-                        .markNotificationRead(n.id);
+                    context.read<FirestoreService>().markNotificationRead(n.id);
                   }
                 },
               );

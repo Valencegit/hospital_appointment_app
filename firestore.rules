@@ -63,7 +63,9 @@ service cloud.firestore {
             .hasOnly(['full_name', 'phone_number', 'photo_url', 'updated_at']))
         || (isOwn(uid)
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['full_name', 'phone_number', 'photo_url', 'updated_at']));
+            .hasOnly([
+              'full_name', 'phone_number', 'photo_url', 'updated_at', 'fcmToken'
+            ]));
       allow delete: if isAdmin();
     }
 

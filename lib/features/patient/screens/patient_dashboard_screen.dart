@@ -540,16 +540,22 @@ class _PatientHeroHeader extends StatelessWidget {
                 .patientAppointmentsStream(uid),
             builder: (ctx, snap) {
               final appointments = snap.data ?? [];
-              final upcoming =
-                  appointments.where((a) => !a.isCancelled).toList();
+              final upcoming = appointments
+                  .where(
+                    (a) =>
+                        (a.isPending || a.isConfirmed) &&
+                        a.appointmentDate.isAfter(DateTime.now()),
+                  )
+                  .toList()
+                ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
 
-              // If an actual upcoming appointment exists, display it; otherwise, display the mockup standard
               final appt = upcoming.isNotEmpty ? upcoming.first : null;
               final dateStr = appt != null
                   ? DateFormat('EEE, MMM d, yyyy • h:mm a')
                       .format(appt.appointmentDate)
-                  : 'Tue, Dec 2, 2025 • 10:00 AM';
-              final deptName = appt?.departmentName ?? 'Cardiology';
+                  : 'No upcoming appointments';
+              final deptName =
+                  appt?.departmentName ?? 'Book a visit to see it here.';
 
               return Container(
                 width: double.infinity,
@@ -624,7 +630,7 @@ class _PatientHeroHeader extends StatelessWidget {
                         if (appt != null) {
                           context.push('/patient/appointments/${appt.id}');
                         } else {
-                          context.push('/patient/appointments');
+                          context.push('/patient/book');
                         }
                       },
                       child: const Row(

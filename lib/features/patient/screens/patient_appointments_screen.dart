@@ -110,28 +110,11 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                       appointments: upcoming,
                       emptyTitle: 'No Upcoming Appointments',
                       emptySubtitle: 'Your booked hospital visits will appear here.',
-                      fallbackMockups: [
-                        _MockAppointment(
-                          month: 'DEC',
-                          day: '2',
-                          department: 'Cardiology',
-                          time: '10:00 AM',
-                          status: 'Confirmed',
-                        ),
-                        _MockAppointment(
-                          month: 'DEC',
-                          day: '10',
-                          department: 'General Medicine',
-                          time: '11:30 AM',
-                          status: 'Confirmed',
-                        ),
-                      ],
                     ),
                     _buildAppointmentList(
                       appointments: past,
                       emptyTitle: 'No Past Appointments',
                       emptySubtitle: 'Completed and past visits will be listed here.',
-                      fallbackMockups: [],
                     ),
                   ],
                 );
@@ -147,9 +130,8 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
     required List<AppointmentModel> appointments,
     required String emptyTitle,
     required String emptySubtitle,
-    required List<_MockAppointment> fallbackMockups,
   }) {
-    if (appointments.isEmpty && fallbackMockups.isEmpty) {
+    if (appointments.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -208,42 +190,28 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
       );
     }
 
-    // If live appointments exist, render them; otherwise fallback to the mockup design items
-    final listCount = appointments.isNotEmpty ? appointments.length : fallbackMockups.length;
-
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: listCount,
+      itemCount: appointments.length,
       itemBuilder: (ctx, i) {
-        if (appointments.isNotEmpty) {
-          final a = appointments[i];
-          final monthStr = DateFormat('MMM').format(a.appointmentDate).toUpperCase();
-          final dayStr = DateFormat('d').format(a.appointmentDate);
-          final timeStr = a.appointmentTime;
-          final statusStr = a.status.isNotEmpty
-              ? '${a.status[0].toUpperCase()}${a.status.substring(1)}'
-              : 'Confirmed';
+        final a = appointments[i];
+        final monthStr = DateFormat('MMM').format(a.appointmentDate).toUpperCase();
+        final dayStr = DateFormat('d').format(a.appointmentDate);
+        final statusStr = a.status.isNotEmpty
+            ? '${a.status[0].toUpperCase()}${a.status.substring(1)}'
+            : 'Pending';
 
-          return _AppointmentRowCard(
-            month: monthStr,
-            day: dayStr,
-            department: a.departmentName,
-            time: timeStr,
-            status: statusStr,
-            reference: a.id.length >= 6 ? a.id.substring(0, 6).toUpperCase() : a.id.toUpperCase(),
-            onTap: () => context.push('/patient/appointments/${a.id}'),
-          );
-        } else {
-          final mock = fallbackMockups[i];
-          return _AppointmentRowCard(
-            month: mock.month,
-            day: mock.day,
-            department: mock.department,
-            time: mock.time,
-            status: mock.status,
-            onTap: () => context.push('/patient/book', extra: <String, dynamic>{}),
-          );
-        }
+        return _AppointmentRowCard(
+          month: monthStr,
+          day: dayStr,
+          department: a.departmentName,
+          time: a.appointmentTime,
+          status: statusStr,
+          reference: a.id.length >= 6
+              ? a.id.substring(0, 6).toUpperCase()
+              : a.id.toUpperCase(),
+          onTap: () => context.push('/patient/appointments/${a.id}'),
+        );
       },
     );
   }
@@ -431,20 +399,4 @@ class _AppointmentRowCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MockAppointment {
-  final String month;
-  final String day;
-  final String department;
-  final String time;
-  final String status;
-
-  _MockAppointment({
-    required this.month,
-    required this.day,
-    required this.department,
-    required this.time,
-    required this.status,
-  });
 }
