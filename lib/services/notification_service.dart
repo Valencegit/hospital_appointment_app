@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,7 +35,9 @@ class NotificationService {
     importance: Importance.high,
   );
 
-  bool _initialized = false;
+  String? _initializedUserId;
+  StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
 
   // ── Initialization ─────────────────────────────────────────────────────────
 
@@ -46,7 +51,9 @@ class NotificationService {
   /// Call after the user has authenticated. Requests permission, saves the
   /// FCM token, and starts listening for foreground messages.
   Future<void> initialize(String userId) async {
-    if (_initialized) return;
+    if (_initializedUserId == userId) return;
+    await _tokenRefreshSubscription?.cancel();
+    await _foregroundMessageSubscription?.cancel();
 
     // 1. Request OS notification permission
     final settings = await _messaging.requestPermission(
@@ -55,8 +62,9 @@ class NotificationService {
       sound: true,
     );
 
-    final granted = settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional;
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
 
     // 2. Initialise flutter_local_notifications
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -82,14 +90,15 @@ class NotificationService {
       if (token != null) await _saveToken(userId, token);
 
       // ignore: deprecated_member_use
-      _messaging.onTokenRefresh
-          .listen((newToken) => _saveToken(userId, newToken));
+      _tokenRefreshSubscription = _messaging.onTokenRefresh.listen((newToken) {
+        _saveToken(userId, newToken);
+      });
 
       // 5. Show foreground messages as local notifications
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _foregroundMessageSubscription =
+          FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         final notification = message.notification;
-        final android = message.notification?.android;
-        if (notification != null && android != null) {
+        if (notification != null) {
           _localNotifications.show(
             notification.hashCode,
             notification.title,
@@ -103,24 +112,37 @@ class NotificationService {
                 priority: Priority.high,
                 icon: '@mipmap/ic_launcher',
               ),
+              iOS: const DarwinNotificationDetails(
+                presentAlert: true,
+                presentBadge: true,
+                presentSound: true,
+              ),
             ),
-          );
-        }
-
-        // Also save to Firestore for in-app notification centre
-        if (notification != null) {
-          saveNotification(
-            userId: userId,
-            title: notification.title ?? 'Notification',
-            body: notification.body ?? '',
-            type: message.data['type'] as String?,
-            appointmentId: message.data['appointmentId'] as String?,
           );
         }
       });
     }
 
-    _initialized = true;
+    _initializedUserId = userId;
+  }
+
+  /// Stops user-specific listeners and removes this device token before logout.
+  Future<void> resetForSignOut(String? userId) async {
+    await _tokenRefreshSubscription?.cancel();
+    await _foregroundMessageSubscription?.cancel();
+    _tokenRefreshSubscription = null;
+    _foregroundMessageSubscription = null;
+    _initializedUserId = null;
+
+    if (userId == null) return;
+    try {
+      await _db
+          .collection(AppConstants.usersCollection)
+          .doc(userId)
+          .update({'fcmToken': FieldValue.delete()});
+    } catch (error) {
+      debugPrint('[NotificationService] Could not clear FCM token: $error');
+    }
   }
 
   // ── Token management ───────────────────────────────────────────────────────
@@ -131,31 +153,9 @@ class NotificationService {
           .collection(AppConstants.usersCollection)
           .doc(userId)
           .update({'fcmToken': token});
-    } catch (_) {
-      // Non-fatal — token will be refreshed on next login
+    } catch (error) {
+      debugPrint('[NotificationService] Could not save FCM token: $error');
     }
-  }
-
-  // ── In-app notifications ───────────────────────────────────────────────────
-
-  /// Persist a notification record so the in-app notification centre can
-  /// display it even if the push was missed.
-  Future<void> saveNotification({
-    required String userId,
-    required String title,
-    required String body,
-    String? type,
-    String? appointmentId,
-  }) async {
-    await _db.collection(AppConstants.notificationsCollection).add({
-      'userId': userId,
-      'title': title,
-      'body': body,
-      if (type != null) 'type': type,
-      if (appointmentId != null) 'appointmentId': appointmentId,
-      'isRead': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
   }
 
   /// Mark all unread notifications as read for a user.

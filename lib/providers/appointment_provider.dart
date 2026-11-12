@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/appointment_model.dart';
+import '../models/appointment_report.dart';
 import '../services/appointment_service.dart';
 
 /// State provider for appointment booking, listing, and status management.
@@ -135,4 +136,10 @@ class AppointmentProvider extends ChangeNotifier {
   // ── Summary ───────────────────────────────────────────────────────────────
 
   Future<Map<String, int>> getSummary() => _service.getAppointmentSummary();
+
+  Future<AppointmentReport> getReport({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) =>
+      _service.getAppointmentReport(startDate: startDate, endDate: endDate);
 }

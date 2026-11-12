@@ -265,20 +265,32 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   static IconData _deptIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('cardio')) { return BootstrapIcons.heart; }
+    if (lower.contains('cardio')) {
+      return BootstrapIcons.heart;
+    }
     if (lower.contains('paedia') || lower.contains('pedi')) {
       return BootstrapIcons.emoji_smile;
     }
-    if (lower.contains('ortho')) { return BootstrapIcons.universal_access; }
-    if (lower.contains('derma')) { return BootstrapIcons.person_bounding_box; }
-    if (lower.contains('ophthal')) { return BootstrapIcons.eye; }
+    if (lower.contains('ortho')) {
+      return BootstrapIcons.universal_access;
+    }
+    if (lower.contains('derma')) {
+      return BootstrapIcons.person_bounding_box;
+    }
+    if (lower.contains('ophthal')) {
+      return BootstrapIcons.eye;
+    }
     if (lower.contains('dental') || lower.contains('dent')) {
       return BootstrapIcons.bag_plus;
     }
     if (lower.contains('obs') ||
         lower.contains('gynae') ||
-        lower.contains('gyne')) { return BootstrapIcons.person_heart; }
-    if (lower.contains('neuro')) { return Icons.psychology_outlined; }
+        lower.contains('gyne')) {
+      return BootstrapIcons.person_heart;
+    }
+    if (lower.contains('neuro')) {
+      return Icons.psychology_outlined;
+    }
     return BootstrapIcons.hospital;
   }
 }
@@ -547,7 +559,8 @@ class _PatientHeroHeader extends StatelessWidget {
                         a.appointmentDate.isAfter(DateTime.now()),
                   )
                   .toList()
-                ..sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+                ..sort(
+                    (a, b) => a.appointmentDate.compareTo(b.appointmentDate));
 
               final appt = upcoming.isNotEmpty ? upcoming.first : null;
               final dateStr = appt != null

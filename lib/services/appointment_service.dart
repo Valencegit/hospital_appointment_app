@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../core/constants/app_constants.dart';
 import '../models/appointment_model.dart';
+import '../models/appointment_report.dart';
 
 /// Handles appointment booking via a Cloud Functions callable and appointment
 /// queries / status updates permitted directly from the client.
@@ -185,5 +186,49 @@ class AppointmentService {
       if (counts.containsKey(s)) counts[s] = counts[s]! + 1;
     }
     return counts;
+  }
+
+  Future<AppointmentReport> getAppointmentReport({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    Query<Map<String, dynamic>> query =
+        _db.collection(AppConstants.appointmentsCollection);
+    if (startDate != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      query = query.where(
+        'appointmentDate',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+      );
+    }
+    if (endDate != null) {
+      final endExclusive = DateTime(endDate.year, endDate.month, endDate.day)
+          .add(const Duration(days: 1));
+      query = query.where(
+        'appointmentDate',
+        isLessThan: Timestamp.fromDate(endExclusive),
+      );
+    }
+
+    final snapshot = await query.get();
+    final statusCounts = <String, int>{};
+    final departmentCounts = <String, int>{};
+    for (final document in snapshot.docs) {
+      final data = document.data();
+      final status = data['status'] as String? ?? 'unknown';
+      final department = data['departmentName'] as String? ?? 'Unknown';
+      statusCounts.update(status, (count) => count + 1, ifAbsent: () => 1);
+      departmentCounts.update(
+        department,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+
+    return AppointmentReport(
+      total: snapshot.size,
+      statusCounts: statusCounts,
+      departmentCounts: departmentCounts,
+    );
   }
 }

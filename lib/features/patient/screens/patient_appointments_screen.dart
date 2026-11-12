@@ -85,6 +85,12 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                if (snap.hasError) {
+                  return const Center(
+                    child:
+                        Text('Unable to load appointments. Please try again.'),
+                  );
+                }
 
                 final all = snap.data ?? [];
                 final now = DateTime.now();
@@ -94,13 +100,15 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                   return !a.isCancelled &&
                       (a.status == 'confirmed' ||
                           a.status == 'pending' ||
-                          a.appointmentDate.isAfter(now.subtract(const Duration(hours: 2))));
+                          a.appointmentDate
+                              .isAfter(now.subtract(const Duration(hours: 2))));
                 }).toList();
 
                 final past = all.where((a) {
                   return a.isCancelled ||
                       a.status == 'completed' ||
-                      a.appointmentDate.isBefore(now.subtract(const Duration(hours: 2)));
+                      a.appointmentDate
+                          .isBefore(now.subtract(const Duration(hours: 2)));
                 }).toList();
 
                 return TabBarView(
@@ -109,12 +117,14 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                     _buildAppointmentList(
                       appointments: upcoming,
                       emptyTitle: 'No Upcoming Appointments',
-                      emptySubtitle: 'Your booked hospital visits will appear here.',
+                      emptySubtitle:
+                          'Your booked hospital visits will appear here.',
                     ),
                     _buildAppointmentList(
                       appointments: past,
                       emptyTitle: 'No Past Appointments',
-                      emptySubtitle: 'Completed and past visits will be listed here.',
+                      emptySubtitle:
+                          'Completed and past visits will be listed here.',
                     ),
                   ],
                 );
@@ -180,7 +190,8 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () => context.push('/patient/book', extra: <String, dynamic>{}),
+                onPressed: () =>
+                    context.push('/patient/book', extra: <String, dynamic>{}),
                 icon: const Icon(BootstrapIcons.plus_lg, size: 18),
                 label: const Text('Book Appointment'),
               ),
@@ -195,7 +206,8 @@ class _PatientAppointmentsScreenState extends State<PatientAppointmentsScreen>
       itemCount: appointments.length,
       itemBuilder: (ctx, i) {
         final a = appointments[i];
-        final monthStr = DateFormat('MMM').format(a.appointmentDate).toUpperCase();
+        final monthStr =
+            DateFormat('MMM').format(a.appointmentDate).toUpperCase();
         final dayStr = DateFormat('d').format(a.appointmentDate);
         final statusStr = a.status.isNotEmpty
             ? '${a.status[0].toUpperCase()}${a.status.substring(1)}'
@@ -353,7 +365,8 @@ class _AppointmentRowCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       // Status Pill with dot
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: badgeBg,
                           borderRadius: BorderRadius.circular(20),

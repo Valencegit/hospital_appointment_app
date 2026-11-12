@@ -18,6 +18,14 @@ async function notifyAppointmentUser(
   type: string
 ): Promise<void> {
   const db = admin.firestore();
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists || userDoc.data()?.is_active === false) {
+    console.warn(
+      `Could not notify inactive or missing user ${userId} for appointment ${appointmentId}.`
+    );
+    return;
+  }
+
   await db.collection("notifications").add({
     userId,
     title,
@@ -28,7 +36,6 @@ async function notifyAppointmentUser(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  const userDoc = await db.collection("users").doc(userId).get();
   const token = userDoc.data()?.fcmToken;
   if (typeof token !== "string" || !token) return;
 
@@ -51,6 +58,18 @@ async function notifyAppointmentUser(
       `Could not send ${type} notification to user ${userId} for appointment ${appointmentId}:`,
       error
     );
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? error.code
+        : null;
+    if (
+      code === "messaging/registration-token-not-registered" ||
+      code === "messaging/invalid-registration-token"
+    ) {
+      await userDoc.ref.update({
+        fcmToken: admin.firestore.FieldValue.delete(),
+      });
+    }
   }
 }
 

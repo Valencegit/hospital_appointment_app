@@ -43,8 +43,25 @@ class DepartmentProvider extends ChangeNotifier {
   Stream<List<DepartmentModel>> departmentsStream() =>
       _service.departmentsStream();
 
-  Stream<List<SlotModel>> slotsStream(String departmentId, DateTime date) =>
-      _service.slotsForDepartment(departmentId, date);
+  Stream<List<SlotModel>> slotsStream(
+    String departmentId,
+    DateTime date, {
+    String? doctorId,
+  }) {
+    if (doctorId == null) {
+      return _service.slotsForDepartment(departmentId, date);
+    }
+
+    return _service.slotsForDoctor(doctorId).map(
+          (slots) => slots
+              .where((slot) =>
+                  slot.departmentId == departmentId &&
+                  slot.date.year == date.year &&
+                  slot.date.month == date.month &&
+                  slot.date.day == date.day)
+              .toList(),
+        );
+  }
 
   Stream<List<SlotModel>> doctorSlotsStream(String doctorId) =>
       _service.slotsForDoctor(doctorId);

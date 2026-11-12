@@ -1,15 +1,127 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAppointmentReminders = exports.setUserAccountStatus = exports.createStaffUser = exports.assignUserRole = exports.ensurePatientRole = exports.createAdminUser = exports.processBookingRequest = exports.assignPatientId = exports.bookAppointment = void 0;
+exports.sendAppointmentReminders = exports.setUserAccountStatus = exports.createStaffUser = exports.assignUserRole = exports.ensurePatientRole = exports.createAdminUser = exports.processBookingRequest = exports.assignPatientId = exports.notifyAppointmentStatusChange = exports.notifyDoctorOfNewAppointment = exports.bookAppointment = void 0;
 const admin = require("firebase-admin");
 // v2 imports — must match firebase-functions ^6.x
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 admin.initializeApp();
+async function notifyAppointmentUser(userId, appointmentId, title, body, type) {
+    var _a, _b;
+    const db = admin.firestore();
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists || ((_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.is_active) === false) {
+        console.warn(`Could not notify inactive or missing user ${userId} for appointment ${appointmentId}.`);
+        return;
+    }
+    await db.collection("notifications").add({
+        userId,
+        title,
+        body,
+        type,
+        appointmentId,
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    const token = (_b = userDoc.data()) === null || _b === void 0 ? void 0 : _b.fcmToken;
+    if (typeof token !== "string" || !token)
+        return;
+    const message = {
+        token,
+        notification: { title, body },
+        data: { type, appointmentId },
+        android: {
+            notification: { channelId: "hospital_appointments" },
+        },
+        apns: {
+            payload: { aps: { sound: "default" } },
+        },
+    };
+    try {
+        await admin.messaging().send(message);
+    }
+    catch (error) {
+        console.error(`Could not send ${type} notification to user ${userId} for appointment ${appointmentId}:`, error);
+        const code = typeof error === "object" && error !== null && "code" in error
+            ? error.code
+            : null;
+        if (code === "messaging/registration-token-not-registered" ||
+            code === "messaging/invalid-registration-token") {
+            await userDoc.ref.update({
+                fcmToken: admin.firestore.FieldValue.delete(),
+            });
+        }
+    }
+}
 // Re-export the booking callable from appointments.ts
 var appointments_1 = require("./appointments");
 Object.defineProperty(exports, "bookAppointment", { enumerable: true, get: function () { return appointments_1.bookAppointment; } });
+exports.notifyDoctorOfNewAppointment = (0, firestore_1.onDocumentCreated)("appointments/{appointmentId}", async (event) => {
+    var _a, _b, _c;
+    const appointment = (_a = event.data) === null || _a === void 0 ? void 0 : _a.data();
+    const doctorId = appointment === null || appointment === void 0 ? void 0 : appointment.doctorId;
+    if (typeof doctorId !== "string" || !doctorId) {
+        console.warn(`Appointment ${event.params.appointmentId} has no assigned doctor; no doctor notification was sent.`);
+        return;
+    }
+    await notifyAppointmentUser(doctorId, event.params.appointmentId, "New Appointment Request", `A patient requested a ${(_b = appointment.departmentName) !== null && _b !== void 0 ? _b : "hospital"} appointment at ${(_c = appointment.appointmentTime) !== null && _c !== void 0 ? _c : "an upcoming time"}.`, "appointment_requested");
+});
+exports.notifyAppointmentStatusChange = (0, firestore_1.onDocumentUpdated)("appointments/{appointmentId}", async (event) => {
+    var _a, _b, _c, _d;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!before || !after || before.status === after.status)
+        return;
+    const appointmentId = event.params.appointmentId;
+    const status = after.status;
+    let userId;
+    let title;
+    let body;
+    let type;
+    switch (status) {
+        case "confirmed":
+            userId = after.patientId;
+            title = "Appointment Confirmed";
+            body = `Your ${(_c = after.departmentName) !== null && _c !== void 0 ? _c : "hospital"} appointment at ${(_d = after.appointmentTime) !== null && _d !== void 0 ? _d : "the scheduled time"} is confirmed.`;
+            type = "appointment_confirmed";
+            break;
+        case "cancelled":
+            userId = after.patientId;
+            title = "Appointment Cancelled";
+            body = "Your appointment cancellation has been processed.";
+            type = "appointment_cancelled";
+            break;
+        case "completed":
+            userId = after.patientId;
+            title = "Appointment Completed";
+            body = "Your appointment has been marked as completed.";
+            type = "appointment_completed";
+            break;
+        case "checked_in":
+            userId = after.patientId;
+            title = "Appointment Check-in";
+            body = "You have been checked in for your appointment.";
+            type = "appointment_checked_in";
+            break;
+        case "cancel_requested":
+        case "reschedule_requested":
+            userId = after.doctorId;
+            title = status === "cancel_requested"
+                ? "Cancellation Requested"
+                : "Reschedule Requested";
+            body = `A patient has requested to ${status === "cancel_requested" ? "cancel" : "reschedule"} an appointment.`;
+            type = status;
+            break;
+        default:
+            return;
+    }
+    if (typeof userId !== "string" || !userId) {
+        console.warn(`Appointment ${appointmentId} changed to ${status} without a notification recipient.`);
+        return;
+    }
+    await notifyAppointmentUser(userId, appointmentId, title, body, type);
+});
 // ─────────────────────────────────────────────────────────────────────────────
 // Patient ID generation
 //
@@ -129,7 +241,7 @@ exports.processBookingRequest = (0, firestore_1.onDocumentCreated)("booking_requ
             userId: patientId,
             title: "Appointment Requested",
             body: `Your ${appointmentDepartmentName} appointment is pending confirmation.`,
-            type: "booking_confirmed",
+            type: "appointment_requested",
             appointmentId,
             isRead: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),

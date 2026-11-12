@@ -188,6 +188,13 @@ class _StaffDetailViewState extends State<_StaffDetailView> {
                             _updateStatus(AppConstants.statusCancelled),
                       ),
                     ],
+                    if (isAssignedDoctor && a.isPending)
+                      CustomButton(
+                        text: 'Confirm Appointment',
+                        icon: BootstrapIcons.check_circle,
+                        onPressed: () =>
+                            _updateStatus(AppConstants.statusConfirmed),
+                      ),
                     if ((isReceptionist || isAdmin) && a.isConfirmed) ...[
                       CustomButton(
                         text: 'Check In Patient',

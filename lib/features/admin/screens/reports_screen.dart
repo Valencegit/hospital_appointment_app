@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../models/appointment_report.dart';
 import '../../../providers/appointment_provider.dart';
 import 'package:bootstrap_icons/bootstrap_icons.dart';
 
@@ -66,14 +67,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, int>>(
-        future: context.read<AppointmentProvider>().getSummary(),
+      body: FutureBuilder<AppointmentReport>(
+        future: context.read<AppointmentProvider>().getReport(
+              startDate: _dateRange?.start,
+              endDate: _dateRange?.end,
+            ),
         builder: (ctx, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final d = snap.data ?? {};
-          final total = d['total'] ?? 0;
+          if (snap.hasError) {
+            return const Center(
+              child: Text('Unable to load reports. Please try again.'),
+            );
+          }
+          final report = snap.data;
+          if (report == null) {
+            return const Center(child: Text('No report data available.'));
+          }
+          final total = report.total;
+          final departments = report.departmentCounts.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
           return ListView(
             padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -81,8 +95,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               // ── Date range chip ───────────────────────────────────────────
               if (_dateRange != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: AppColors.primaryLight,
@@ -135,8 +149,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(
-                      AppConstants.defaultBorderRadius),
+                  borderRadius:
+                      BorderRadius.circular(AppConstants.defaultBorderRadius),
                 ),
                 child: Row(
                   children: [
@@ -182,7 +196,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 12),
               _StatusCard(
                 label: 'Pending',
-                value: d[AppConstants.statusPending] ?? 0,
+                value: report.statusCounts[AppConstants.statusPending] ?? 0,
                 total: total,
                 color: AppColors.warning,
                 icon: BootstrapIcons.hourglass,
@@ -190,7 +204,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 10),
               _StatusCard(
                 label: 'Confirmed',
-                value: d[AppConstants.statusConfirmed] ?? 0,
+                value: report.statusCounts[AppConstants.statusConfirmed] ?? 0,
                 total: total,
                 color: AppColors.success,
                 icon: BootstrapIcons.check_circle,
@@ -198,7 +212,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 10),
               _StatusCard(
                 label: 'Completed',
-                value: d[AppConstants.statusCompleted] ?? 0,
+                value: report.statusCounts[AppConstants.statusCompleted] ?? 0,
                 total: total,
                 color: AppColors.info,
                 icon: BootstrapIcons.check_all,
@@ -206,7 +220,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 10),
               _StatusCard(
                 label: 'Cancelled',
-                value: d[AppConstants.statusCancelled] ?? 0,
+                value: report.statusCounts[AppConstants.statusCancelled] ?? 0,
                 total: total,
                 color: AppColors.error,
                 icon: BootstrapIcons.x_circle,
@@ -214,7 +228,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(height: 10),
               _StatusCard(
                 label: 'Reschedule Requested',
-                value: d[AppConstants.statusRescheduleRequested] ?? 0,
+                value: report
+                        .statusCounts[AppConstants.statusRescheduleRequested] ??
+                    0,
                 total: total,
                 color: const Color(0xFF7C3AED),
                 icon: Icons.edit_calendar_outlined,
@@ -234,27 +250,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: 12),
                 _ProgressRow(
                   label: 'Completed',
-                  value: (d[AppConstants.statusCompleted] ?? 0) / total,
+                  value:
+                      (report.statusCounts[AppConstants.statusCompleted] ?? 0) /
+                          total,
                   color: AppColors.success,
                 ),
                 const SizedBox(height: 8),
                 _ProgressRow(
                   label: 'Cancelled',
                   value:
-                      (d[AppConstants.statusCancelled] ?? 0) / total,
+                      (report.statusCounts[AppConstants.statusCancelled] ?? 0) /
+                          total,
                   color: AppColors.error,
                 ),
                 const SizedBox(height: 8),
                 _ProgressRow(
                   label: 'Pending',
-                  value: (d[AppConstants.statusPending] ?? 0) / total,
+                  value:
+                      (report.statusCounts[AppConstants.statusPending] ?? 0) /
+                          total,
                   color: AppColors.warning,
                 ),
               ],
 
               const SizedBox(height: 24),
 
-              // ── Department breakdown (placeholder) ────────────────────────
               const Text(
                 'By Department',
                 style: TextStyle(
@@ -265,12 +285,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              ..._deptBreakdown.map((e) => Padding(
+              if (departments.isEmpty)
+                const Text(
+                  'No appointments in this date range.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ...departments.map((entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _DeptReportTile(
-                      name: e.$1,
-                      count: e.$2,
-                      totalForBar: 120,
+                      name: entry.key,
+                      count: entry.value,
+                      totalForBar: total,
                     ),
                   )),
             ],
@@ -279,15 +304,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
   }
-
-  // Placeholder department data — will be replaced with Firestore queries
-  static const _deptBreakdown = [
-    ('Cardiology', 38),
-    ('General Medicine', 32),
-    ('Paediatrics', 22),
-    ('Orthopaedics', 18),
-    ('Dermatology', 10),
-  ];
 }
 
 class _StatusCard extends StatelessWidget {
@@ -307,17 +323,13 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = total > 0
-        ? (value / total * 100).toStringAsFixed(1)
-        : '0.0';
+    final pct = total > 0 ? (value / total * 100).toStringAsFixed(1) : '0.0';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
-        borderRadius:
-            BorderRadius.circular(AppConstants.defaultBorderRadius),
-        border:
-            Border.all(color: color.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -326,8 +338,7 @@ class _StatusCard extends StatelessWidget {
           Expanded(
             child: Text(label,
                 style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w500)),
+                    fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
           ),
           Text('$pct%',
               style: TextStyle(
@@ -446,8 +457,7 @@ class _DeptReportTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: fraction.clamp(0.0, 1.0),
-              backgroundColor:
-                  AppColors.primary.withValues(alpha: 0.1),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               color: AppColors.primary,
               minHeight: 6,
             ),

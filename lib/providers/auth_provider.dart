@@ -65,6 +65,12 @@ class AuthProvider extends ChangeNotifier {
       _authStateSubscription =
           _authService.authStateChanges.listen((User? user) async {
         if (user == null) {
+          final previousUserId = _currentUser?.uid;
+          if (previousUserId != null) {
+            NotificationService.instance
+                .resetForSignOut(previousUserId)
+                .ignore();
+          }
           _currentUser = null;
           _patientProfile = null;
           _staffProfile = null;
@@ -283,6 +289,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final userId = _currentUser?.uid;
+      if (userId != null) {
+        await NotificationService.instance.resetForSignOut(userId);
+      }
       await _authService.signOut();
     } catch (e) {
       debugPrint('[AuthProvider] Sign out error: $e');

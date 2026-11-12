@@ -29,7 +29,7 @@ class NotificationsScreen extends StatelessWidget {
             onPressed: () async {
               try {
                 await NotificationService.instance.markAllRead(uid);
-              } catch (error) {
+              } catch (_) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -90,9 +90,20 @@ class NotificationsScreen extends StatelessWidget {
                 message: n.body,
                 timeAgo: timeAgo,
                 isRead: n.isRead,
-                onTap: () {
+                onTap: () async {
                   if (!n.isRead) {
-                    context.read<FirestoreService>().markNotificationRead(n.id);
+                    try {
+                      await context
+                          .read<FirestoreService>()
+                          .markNotificationRead(n.id);
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not update this notification.'),
+                        ),
+                      );
+                    }
                   }
                 },
               );
@@ -118,15 +129,22 @@ class NotificationsScreen extends StatelessWidget {
       case 'updated':
       case 'appointment_updated':
       case 'rescheduled':
-        return (BootstrapIcons.info_circle_fill, Colors.white, const Color(0xFFF59E0B));
-      case 'cancelled':
-        return (BootstrapIcons.x_lg, Colors.white, const Color(0xFFEF4444));
-      default:
         return (
-          BootstrapIcons.bell,
+          BootstrapIcons.info_circle_fill,
           Colors.white,
-          const Color(0xFF008F87)
+          const Color(0xFFF59E0B)
         );
+      case 'cancelled':
+      case 'appointment_cancelled':
+        return (BootstrapIcons.x_lg, Colors.white, const Color(0xFFEF4444));
+      case 'appointment_completed':
+        return (
+          BootstrapIcons.check_circle_fill,
+          Colors.white,
+          const Color(0xFF00897B)
+        );
+      default:
+        return (BootstrapIcons.bell, Colors.white, const Color(0xFF008F87));
     }
   }
 
