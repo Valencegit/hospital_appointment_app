@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// MediCare Unified Teal Theme — consistent across the entire application.
+/// MediCare application palette used by the app theme and UI components.
 class AppColors {
   AppColors._();
 
-  // ── Primary MediCare Teal Palette ──────────────────────────────────────────
-  /// Main teal — buttons, active icons, highlights, app bar
-  static const Color primary = Color(0xFF008F87);
+  // ── Primary brand palette ─────────────────────────────────────────────────
+  /// Main blue used for primary buttons, links, and critical actions.
+  static const Color primary = Color(0xFF0B63E5);
 
-  /// Dark teal — headings, navigation bar, emphasis
-  static const Color primaryDark = Color(0xFF006D68);
+  /// Dark blue for headings, navigation emphasis, and elevated surfaces.
+  static const Color primaryDark = Color(0xFF0A4DB1);
 
-  /// Light teal — backgrounds, selected cards, chip backgrounds
-  static const Color primaryLight = Color(0xFFDDF7F4);
+  /// Light blue background used for selected cards and subtle highlights.
+  static const Color primaryLight = Color(0xFFE5F0FF);
 
-  /// Medium teal — containers, secondary surfaces
-  static const Color primaryContainer = Color(0xFFB2EDE9);
+  /// Medium blue container color.
+  static const Color primaryContainer = Color(0xFFBFD9FF);
 
   // ── Secondary & Accents ───────────────────────────────────────────────────
   static const Color secondary = Color(0xFF00B4A8);
@@ -40,11 +40,11 @@ class AppColors {
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
   // ── Feedback & State Colors ───────────────────────────────────────────────
-  static const Color success = Color(0xFF00897B);
+  static const Color success = Color(0xFF0EA568);
   static const Color successLight = Color(0xFFE0F2F1);
-  static const Color warning = Color(0xFFFF8F00);
+  static const Color warning = Color(0xFFD97706);
   static const Color warningLight = Color(0xFFFFF8E1);
-  static const Color error = Color(0xFFE53935);
+  static const Color error = Color(0xFFEF4444);
   static const Color errorLight = Color(0xFFFFEBEE);
   static const Color info = Color(0xFF0097A7);
   static const Color infoLight = Color(0xFFE0F7FA);
@@ -67,13 +67,13 @@ class AppColors {
 
   // ── Status Badge Colors ───────────────────────────────────────────────────
   static const Color statusPending = Color(0xFFFFF8E1);
-  static const Color statusPendingText = Color(0xFFFF8F00);
+  static const Color statusPendingText = Color(0xFFD97706);
   static const Color statusConfirmed = Color(0xFFE0F2F1);
-  static const Color statusConfirmedText = Color(0xFF00897B);
+  static const Color statusConfirmedText = Color(0xFF0EA568);
   static const Color statusCancelled = Color(0xFFFFEBEE);
-  static const Color statusCancelledText = Color(0xFFE53935);
+  static const Color statusCancelledText = Color(0xFFEF4444);
   static const Color statusCompleted = Color(0xFFDDF7F4);
-  static const Color statusCompletedText = Color(0xFF008F87);
+  static const Color statusCompletedText = Color(0xFF0B63E5);
 
   // ── Dark Theme Palette ────────────────────────────────────────────────────
   static const Color darkBackground = Color(0xFF0D1F1E);
