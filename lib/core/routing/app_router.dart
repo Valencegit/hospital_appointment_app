@@ -88,7 +88,8 @@ class AppRouter {
       }
       if (loc.startsWith('/staff/schedules') &&
           !role.isSchedulingOfficer &&
-          !role.isAdmin) {
+          !role.isAdmin &&
+          !role.isDoctor) {
         return dashboardForRole(role);
       }
       if (loc.startsWith('/staff/patients') &&
