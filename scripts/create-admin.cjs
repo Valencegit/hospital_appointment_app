@@ -7,10 +7,10 @@
  *   1. Install the Firebase Admin SDK locally (once):
  *        npm install firebase-admin --prefix scripts
  *
- *   2. Download a service-account key from:
- *        Firebase Console → Project Settings → Service accounts → Generate key
- *      Save it as:  scripts/serviceAccountKey.json
- *      Add serviceAccountKey.json to .gitignore (NEVER commit it).
+ *   2. Authenticate with Application Default Credentials:
+ *        gcloud auth application-default login
+ *      The Google account must have permission to manage Firebase Authentication
+ *      users and Firestore in the project selected by .firebaserc.
  *
  *   3. Run (PowerShell):
  *        $env:ADMIN_EMAIL="admin@yourhospital.com"
@@ -43,21 +43,19 @@
 const path = require('path');
 const admin = require(path.join(__dirname, 'node_modules', 'firebase-admin'));
 
-// ── Load service account ───────────────────────────────────────────────────
-const keyPath = path.join(__dirname, 'serviceAccountKey.json');
-let serviceAccount;
-try {
-  serviceAccount = require(keyPath);
-} catch {
+// ── Initialize with trusted local or deployment credentials ────────────────
+const firebaseConfig = require(path.join(__dirname, '..', '.firebaserc'));
+const projectId =
+  process.env.FIREBASE_PROJECT_ID || firebaseConfig.projects?.default;
+if (!projectId) {
   console.error(
-    '\n❌  Service account key not found at:\n   ' + keyPath +
-    '\n\n   Download it from Firebase Console → Project Settings → Service accounts\n'
+    '\n❌  Set FIREBASE_PROJECT_ID or configure a default in .firebaserc.\n'
   );
   process.exit(1);
 }
-
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.applicationDefault(),
+  projectId,
 });
 
 // ── Read credentials from environment ─────────────────────────────────────

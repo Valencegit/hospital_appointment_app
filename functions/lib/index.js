@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAppointmentReminders = exports.setUserAccountStatus = exports.createStaffUser = exports.assignUserRole = exports.ensurePatientRole = exports.createAdminUser = exports.processBookingRequest = exports.bookAppointment = void 0;
+exports.sendAppointmentReminders = exports.setUserAccountStatus = exports.createStaffUser = exports.assignUserRole = exports.ensurePatientRole = exports.createAdminUser = exports.processBookingRequest = exports.assignPatientId = exports.bookAppointment = void 0;
 const admin = require("firebase-admin");
 // v2 imports — must match firebase-functions ^6.x
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -10,6 +10,51 @@ admin.initializeApp();
 // Re-export the booking callable from appointments.ts
 var appointments_1 = require("./appointments");
 Object.defineProperty(exports, "bookAppointment", { enumerable: true, get: function () { return appointments_1.bookAppointment; } });
+// ─────────────────────────────────────────────────────────────────────────────
+// Patient ID generation
+//
+// Called automatically when a new document is created in the `patients/`
+// collection. Assigns a sequential HMS-PAT-XXXXXX hospital ID using a
+// Firestore counter transaction so IDs are always unique and monotonic.
+//
+// The ID is written back to both `patients/{uid}.patientId` and
+// `users/{uid}.patientId` so both collections stay in sync.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.assignPatientId = (0, firestore_1.onDocumentCreated)("patients/{uid}", async (event) => {
+    const snap = event.data;
+    if (!snap)
+        return;
+    const uid = event.params.uid;
+    const data = snap.data();
+    // Skip if a Patient ID was already assigned (re-triggered doc)
+    if (typeof data.patientId === "string" && data.patientId.startsWith("HMS-PAT-")) {
+        return;
+    }
+    const db = admin.firestore();
+    const counterRef = db.collection("counters").doc("patients");
+    const patientRef = db.collection("patients").doc(uid);
+    const userRef = db.collection("users").doc(uid);
+    let patientId = "";
+    await db.runTransaction(async (tx) => {
+        var _a, _b;
+        const counter = await tx.get(counterRef);
+        const lastNumber = counter.exists
+            ? ((_b = (_a = counter.data()) === null || _a === void 0 ? void 0 : _a.lastNumber) !== null && _b !== void 0 ? _b : 0)
+            : 0;
+        const nextNumber = lastNumber + 1;
+        patientId = `HMS-PAT-${String(nextNumber).padStart(6, "0")}`;
+        tx.set(counterRef, { lastNumber: nextNumber }, { merge: true });
+        tx.update(patientRef, { patientId });
+    });
+    // Mirror the ID onto the users document (best-effort, non-critical)
+    try {
+        await userRef.update({ patientId });
+    }
+    catch (_a) {
+        // users/ document may not exist yet during early registration
+    }
+    console.log(`[assignPatientId] Assigned ${patientId} to patient ${uid}`);
+});
 // ─────────────────────────────────────────────────────────────────────────────
 // Booking trigger: processes booking_requests documents transactionally
 // ─────────────────────────────────────────────────────────────────────────────
